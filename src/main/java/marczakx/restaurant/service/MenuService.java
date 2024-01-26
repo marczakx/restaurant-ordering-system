@@ -5,7 +5,7 @@ import java.util.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import marczakx.restaurant.model.dto.MenuItemDto;
+import marczakx.restaurant.model.dto.*;
 import marczakx.restaurant.model.entity.*;
 import marczakx.restaurant.repository.CuisinesRepository;
 import marczakx.restaurant.repository.MenuItemTypeRepository;
@@ -18,20 +18,19 @@ public class MenuService {
   private final CuisinesRepository cuisinesRepository;
   private final MenuItemTypeRepository menuItemTypeRepository;
 
-  public List<Cuisines> getCuisines() {
-    return cuisinesRepository.findAll();
+  public List<CuisineDto> getCuisines() {
+    return cuisinesRepository.findAll().stream().map(e -> new CuisineDto(e.getId(), e.getName())).toList();
+  }
+
+  public List<MenuItemTypeDto> getMenuItemType() {
+    return menuItemTypeRepository.findAll().stream().map(e -> new MenuItemTypeDto(e.getId(), e.getName())).toList();
   }
 
   @Transactional
-  public List<MenuItemDto> getMainSourcesByCuisineId(Long id) {
-    return getMenuItemsByTypeName("Main course")
-      .stream()
-      .filter(menuItem -> menuItem
-        .getCuisines()
-        .stream()
-        .anyMatch(cuisines -> cuisines.getId().equals(id))
-      )
-      .map(e -> mapper(e)).toList();
+  public List<MenuItemDto> getMenuItemsByTypeNameAndByCuisineId(String menuItemTypeName, Long id) {
+    return getMenuItemsByTypeName(menuItemTypeName).stream()
+        .filter(menuItem -> menuItem.getCuisines().stream().anyMatch(cuisines -> cuisines.getId().equals(id)))
+        .map(e -> mapper(e)).toList();
   }
 
   @Transactional

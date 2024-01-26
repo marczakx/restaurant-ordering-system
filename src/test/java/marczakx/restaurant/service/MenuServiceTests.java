@@ -18,6 +18,7 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import marczakx.restaurant.model.dto.CuisineDto;
 import marczakx.restaurant.model.dto.MenuItemDto;
 import marczakx.restaurant.model.entity.Cuisines;
 import marczakx.restaurant.model.entity.MenuItem;
@@ -48,15 +49,15 @@ public class MenuServiceTests {
     );
 
     //When
-    Mockito.when(menuSevice.getCuisines()).thenReturn(givenCuisines);
-    List<Cuisines> actualCuisines = menuSevice.getCuisines(); 
+    Mockito.when(cuisinesRepository.findAll()).thenReturn(givenCuisines);
+    List<CuisineDto> actualCuisines = menuSevice.getCuisines(); 
 
     //Then
     assertEquals(3, actualCuisines.size());
   }
   
   @Test
-  void getMainSourcesByCuisineId_MainCourses_MenuItemsWhereCousineIdIsOne() {
+  void getMenuItemsByTypeNameAndByCuisineId_MainCourses_MenuItemsWhereCousineIdIsOne() {
 
     //Given
     Set<MenuItem> givenMenuItems = Set.of(
@@ -71,7 +72,7 @@ public class MenuServiceTests {
     Mockito.when(menuItemTypeRepository.findByName("Main course")).thenReturn(mainCourse);
 
     //Then
-    List<MenuItemDto> actualMenuitems = menuSevice.getMainSourcesByCuisineId(1l);
+    List<MenuItemDto> actualMenuitems = menuSevice.getMenuItemsByTypeNameAndByCuisineId("Main course", 1l);
     assertNotNull(actualMenuitems);
     assertThat(actualMenuitems).isNotNull();
     assertEquals(2, actualMenuitems.size());
