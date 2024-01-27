@@ -2,6 +2,8 @@ package marczakx.restaurant.model.entity;
 
 import java.util.*;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -21,12 +23,14 @@ public class MenuItem {
 
   private Float price;
 
+  @JsonIgnore
   @ManyToMany
   @JoinTable(name = "menu_item__cuisine",
     joinColumns = {@JoinColumn(name = "menu_item_id")},
     inverseJoinColumns = {@JoinColumn(name = "cuisine_id")})
   private Set<Cuisines> cuisines = new HashSet<>();
 
+  @JsonIgnore
   @ManyToMany
   @JoinTable(name = "menu_item__addition",
     joinColumns = {@JoinColumn(name = "menu_item_id")},
