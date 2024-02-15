@@ -3,6 +3,7 @@ package marczakx.restaurant.controller;
 import java.util.List;
 
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -13,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import marczakx.restaurant.service.OrderService;
 import marczakx.restaurant.model.entity.order.Order;
 
+@CrossOrigin
 @RestController
 @RequestMapping("/api/order")
 @RequiredArgsConstructor

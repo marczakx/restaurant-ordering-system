@@ -1,6 +1,8 @@
 package marczakx.restaurant.controller;
 
 import java.util.List;
+
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -11,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import marczakx.restaurant.service.MenuService;
 import marczakx.restaurant.model.dto.*;
 
+@CrossOrigin
 @RestController
 @RequestMapping("/api/menu")
 @RequiredArgsConstructor
