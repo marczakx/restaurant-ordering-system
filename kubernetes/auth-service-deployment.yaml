@@ -1,34 +1,32 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: restaurant-backend
+  name: auth-service
   namespace: restaurant
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: restaurant-backend
+      app: auth-service
   template:
     metadata:
       labels:
-        app: restaurant-backend
+        app: auth-service
     spec:
       containers:
-      - name: backend
-        image: marczakx/restaurant-backend:latest
+      - name: auth-service
+        image: marczakx/auth:2
         imagePullPolicy: Always
         ports:
-        - containerPort: 8080
+        - containerPort: 9090
         env:
-        - name: SPRING_PROFILES_ACTIVE
-          value: production
         - name: SPRING_DATASOURCE_URL
-          value: jdbc:postgresql://restaurant-postgres:5432/restaurant
-        - name: SPRING_DATASOURCE_DRIVER
-          value: org.postgresql.Driver
+          value: jdbc:postgresql://auth-db:5432/postgres
         - name: SPRING_DATASOURCE_USERNAME
           value: postgres
         - name: SPRING_DATASOURCE_PASSWORD
-          value: restaurant
+          value: dbpas-change-it
         - name: SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT
           value: org.hibernate.dialect.PostgreSQLDialect
+        - name: JWT_SECRET
+          value: ++++++++++++++++++++++CHANGE+IT+++++++++++++++++++++++++++++++++

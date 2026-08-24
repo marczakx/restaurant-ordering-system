@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: restaurant-frontend
+  namespace: restaurant
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: restaurant-frontend
+  template:
+    metadata:
+      labels:
+        app: restaurant-frontend
+    spec:
+      containers:
+      - name: frontend
+        image: marczakx/restaurant-frontend:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
