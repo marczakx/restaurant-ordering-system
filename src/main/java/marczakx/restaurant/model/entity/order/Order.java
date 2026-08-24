@@ -4,6 +4,8 @@ import java.util.*;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -26,10 +28,14 @@ public class Order {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @OneToMany(cascade = CascadeType.MERGE)
+  @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
   @JoinColumn(name = "order_id")
   Set<OrderItem> orderItems = new HashSet<>();
 
-  String costumer;
+  String customer;
+
+  @Enumerated(EnumType.STRING)
+  @Builder.Default
+  OrderStatus status = OrderStatus.TO_DO;
 
 }

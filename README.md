@@ -1,13 +1,138 @@
-<h1 align="center">Food ordering system</h1>
+# Food ordering system
 
-Compilation
+## Build and Run
 
+The project is designed to be built and run entirely with Docker. The Maven build steps are retained for reference but are no longer required for normal development or deployment.
+
+### Using Docker (recommended)
+
+The project includes a two-stage Docker build:
+
+1. Build the intermediate Maven dependencies image (only needed when `pom.xml` changes):
+   ```sh
+   docker build -t restaurant-maven-deps:latest -f dockerfile.maven .
+   ```
+
+2. Build the application image:
+   ```sh
+   docker build -t restaurant-backend:latest -f Dockerfile .
+   ```
+
+### Run
+
+#### Using Docker
 ```sh
-mvn install
+docker run --rm -p 8081:8080 restaurant-backend:latest
 ```
-Run
 
+### Docker Compose
+To run the full application stack (database, backend, auth-service, and frontend) using Docker Compose:
 ```sh
-java -jar target/restaurant-*.jar
+docker-compose up --build
 ```
 
+This will start:
+- **Frontend**: http://localhost:8082
+- **Backend**: http://localhost:8081
+- **Restaurant database**: PostgreSQL on port 5433
+- **Auth service**: `marczakx/auth:2` with its own PostgreSQL database and Liquibase migrations
+- **Auth database**: PostgreSQL used only by the auth service
+
+Authentication is delegated to the **auth-service**. The frontend Nginx proxies `/login` to the auth service and protects `/api/*` with `auth_request` verification. Login credentials: `demo` / `demo`.
+
+To stop all services:
+```sh
+docker-compose down
+```
+
+### Recent Changes
+- Fixed integration-tests container to use Maven JDK image
+- Added Docker socket mounting for Testcontainers
+- Fixed Cypress E2E tests to handle auth guard
+- Fixed data.sql sequence initialization
+
+### Code Review Notes and Suggestions
+
+#### Security
+- **Passwords stored in plain text**: User passwords are stored as plain text (e.g., `admin123`). Should use BCrypt/Argon2 hashing with Spring Security `BCryptPasswordEncoder`.
+- **CORS configuration**: `@CrossOrigin` without restrictions allows access from any origin. Should configure allowed origins explicitly.
+- **Authentication token**: Current token-based auth generates random UUID but doesn't validate it. Should implement proper JWT or session-based authentication.
+
+#### Code Quality
+- **OrderService.saveOrder**: Saves additionOrderItems and orderItems separately before saving order. Should use CascadeType.ALL on relationships.
+- **OrderService.getOrderById**: Throws RuntimeException instead of custom exception. Should add global @ControllerAdvice for error handling.
+- **MenuService.getMenuItemsByTypeName**: Uses orElseThrow() without clear error message. Should add descriptive message.
+- **OrderService.addItemToOrder**: Creates MenuItem without price. Should verify item exists in database.
+- **Order entity**: Uses CascadeType.MERGE. Should consider CascadeType.ALL or PERSIST for consistency.
+- **OrderItem and AdditionOrderItem**: Missing @ManyToOne relationship with Order. Less readable.
+
+### Architecture
+![Application Architecture Diagram](https://mermaid.ink/img/poneillz10001000100010001000100010001000)
+
+### Architecture
+### Application Architecture
+
+```mermaid
+graph TD
+%% Styles
+classDef client fill:#e8f4fd,stroke:#1976d2,stroke-width:2px;
+classDef presentation fill:#e8fdf5,stroke:#2e7d32,stroke-width:2px;
+classDef business fill:#fff3e0,stroke:#ef6c00,stroke-width:2px;
+classDef data fill:#f9f9f9,stroke:#616161,stroke-width:1px,stroke-dasharray: 5 5;
+
+%% Client Layer
+subgraph Client["🌐 Client Layer"]
+direction TB
+FE[Angular Frontend]
+FE -->|HTTP Requests| BE
+end
+class FE client;
+
+%% Presentation Layer
+subgraph Presentation["📋 Presentation Layer"]
+direction TB
+OC[OrderController]
+MC[MenuController]
+AC[AuthController]
+OC -->|REST API| BE
+MC -->|REST API| BE
+AC -->|REST API| BE
+end
+class OC,MC,AC presentation;
+
+%% Business Logic Layer
+subgraph Business["🔧 Business Logic Layer"]
+direction TB
+OS[OrderService]
+MS[MenuService]
+OS -->|Manages| OR[Order Repository]
+OS -->|Manages| AOI[AdditionOrderItem Repository]
+OS -->|Manages| OI[OrderItem Repository]
+MS -->|Manages| MR[MenuItem Repository]
+MS -->|Manages| MTR[MenuItemType Repository]
+MS -->|Manages| CR[Cuisines Repository]
+MS -->|Handles| AM[Addition Logic]
+end
+class OS,MS business;
+
+%% Data Layer
+subgraph Data["💾 Data Layer"]
+direction TB
+PG[(PostgreSQL Database)]
+OR -->|CRUD Operations| PG
+MR -->|CRUD Operations| PG
+MTR -->|CRUD Operations| PG
+CR -->|CRUD Operations| PG
+AOI -->|CRUD Operations| PG
+OI -->|CRUD Operations| PG
+end
+class PG data;
+
+%% Connections between layers
+BE[Backend Spring Boot] -->|Routes Requests| OC
+BE -->|Routes Requests| MC
+BE -->|Routes Requests| AC
+OS -->|Sends Events| WS[WebSocket Config]
+WS -->|Broadcasts| FE
+
+style BE fill:#e3f2fd,stroke:#1565c0,stroke-width:3px;

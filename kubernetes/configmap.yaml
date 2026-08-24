@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: restaurant-config
+  namespace: restaurant
+data:
+  application.properties: |
+    spring.datasource.url=jdbc:postgresql://postgres:5432/restaurant
+    spring.datasource.username=restaurant
+    spring.datasource.password=restaurant
+    spring.jpa.hibernate.ddl-auto=update
+    spring.jpa.show-sql=true
+    spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
+    
+    server.port=8080

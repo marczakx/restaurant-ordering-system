@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -24,6 +26,7 @@ import marczakx.restaurant.model.entity.Cuisines;
 import marczakx.restaurant.model.entity.MenuItem;
 import marczakx.restaurant.model.entity.MenuItemType;
 import marczakx.restaurant.repository.CuisinesRepository;
+import marczakx.restaurant.repository.MenuItemRepository;
 import marczakx.restaurant.repository.MenuItemTypeRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -34,6 +37,9 @@ public class MenuServiceTests {
   
   @Mock
   private MenuItemTypeRepository menuItemTypeRepository;
+  
+  @Mock
+  private MenuItemRepository menuItemRepository;
   
   @InjectMocks
   private MenuService menuSevice;
@@ -79,7 +85,7 @@ public class MenuServiceTests {
     assertTrue(actualMenuitems.stream().anyMatch(e -> e.name().equals("Item 1")));
     assertTrue(actualMenuitems.stream().anyMatch(e -> e.name().equals("Item 2")));
   }
- 
+  
   
   @Test
   void getMenuItemsByTypeName__MainCourses_MenuItems() {
@@ -105,6 +111,65 @@ public class MenuServiceTests {
     assertTrue(actualMenuitems.stream().anyMatch(e -> e.name().equals("Item 2")));
     assertTrue(actualMenuitems.stream().anyMatch(e -> e.name().equals("Item 3")));
     assertTrue(actualMenuitems.stream().anyMatch(e -> e.name().equals("Item 4")));
+  }
+
+  @Test
+  void addMenuItem_ValidMenuItemDto_ReturnsCreatedItem() {
+    // Given
+    MenuItemDto inputDto = new MenuItemDto(
+      null,
+      "New Pizza",
+      12.99f,
+      new ArrayList<>(),
+      "Pizza",
+      Set.of(1L, 2L)
+    );
+
+    MenuItemType pizzaType = MenuItemType.builder()
+      .id(1L)
+      .name("Pizza")
+      .menuItems(new HashSet<>())
+      .build();
+
+    Cuisines cuisine1 = Cuisines.builder().id(1L).name("Italian").build();
+    Cuisines cuisine2 = Cuisines.builder().id(2L).name("Mediterranean").build();
+
+    MenuItem savedItem = MenuItem.builder()
+      .id(10L)
+      .name("New Pizza")
+      .price(12.99f)
+      .cuisines(Set.of(cuisine1, cuisine2))
+      .build();
+
+    Mockito.when(menuItemTypeRepository.findByName("Pizza")).thenReturn(Optional.of(pizzaType));
+    Mockito.when(cuisinesRepository.findAllById(Set.of(1L, 2L))).thenReturn(List.of(cuisine1, cuisine2));
+    Mockito.when(menuItemRepository.save(Mockito.any(MenuItem.class))).thenReturn(savedItem);
+
+    // When
+    MenuItemDto result = menuSevice.addMenuItem(inputDto);
+
+    // Then
+    assertNotNull(result);
+    assertEquals("New Pizza", result.name());
+    assertEquals(12.99f, result.price());
+  }
+
+  @Test
+  void addMenuItem_InvalidMenuItemType_ThrowsException() {
+    // Given
+    MenuItemDto inputDto = new MenuItemDto(
+      null,
+      "New Pizza",
+      12.99f,
+      new ArrayList<>(),
+      "NonExistentType",
+      Set.of()
+    );
+
+    Mockito.when(menuItemTypeRepository.findByName("NonExistentType")).thenReturn(Optional.empty());
+
+    // When & Then
+    assertThrows(IllegalArgumentException.class, () -> menuSevice.addMenuItem(inputDto));
   }
 
 }

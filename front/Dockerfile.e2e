@@ -1,0 +1,22 @@
+FROM cypress/browsers:node-20.11.0-chrome-120.0.6099.109-1.v1
+
+WORKDIR /app
+
+# Copy package files
+COPY package.json ./
+COPY cypress.config.js ./
+
+# Install dependencies including Cypress
+RUN npm install --legacy-peer-deps
+
+# Copy source code
+COPY . .
+
+# Build the Angular app
+RUN npx ng build
+
+# Expose port for the dev server
+EXPOSE 4200
+
+# Start the dev server
+CMD ["npx", "ng", "serve", "--host", "0.0.0.0", "--port", "4200"]

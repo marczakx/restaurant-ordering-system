@@ -26,7 +26,7 @@ public class AdditionOrderItem {
   private Long id;
 
   @ManyToOne
-  Addition additoin;
+  Addition addition;
 
   Float price;
 }

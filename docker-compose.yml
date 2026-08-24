@@ -1,0 +1,114 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_DB=restaurant
+      - POSTGRES_USER=restaurant
+      - POSTGRES_PASSWORD=restaurant
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - restaurant-network
+
+  auth-db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: dbpas-change-it
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 1s
+      timeout: 5s
+      retries: 10
+    networks:
+      - restaurant-network
+
+  auth-service:
+    image: marczakx/auth:2
+    environment:
+      - SPRING_DATASOURCE_PASSWORD=dbpas-change-it
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://auth-db:5432/postgres
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=org.hibernate.dialect.PostgreSQLDialect
+      - JWT_SECRET=${JWT_SECRET:-++++++++++++++++++++++CHANGE+IT+++++++++++++++++++++++++++++++++}
+    depends_on:
+      auth-db:
+        condition: service_healthy
+    networks:
+      - restaurant-network
+
+  auth-liquibase:
+    image: liquibase/liquibase:4.19
+    volumes:
+      - ./liquibase/:/liquibase/changelog/
+      #- ~/.m2/repository/org/postgresql/postgresql/42.6.2/postgresql-42.6.2.jar:/liquibase/lib/postgresql.jar
+    command: update --url=jdbc:postgresql://auth-db:5432/postgres --changelog-file=changelog/changelog.xml  --username=postgres --password=dbpas-change-it
+    depends_on:
+      auth-db:
+        condition: service_healthy
+    networks:
+      - restaurant-network
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/restaurant
+      - SPRING_DATASOURCE_DRIVERCLASSNAME=org.postgresql.Driver
+      - SPRING_DATASOURCE_USERNAME=restaurant
+      - SPRING_DATASOURCE_PASSWORD=restaurant
+      - SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=org.hibernate.dialect.PostgreSQLDialect
+    depends_on:
+      - db
+    networks:
+      - restaurant-network
+
+  frontend:
+    build:
+      context: ./front
+      dockerfile: Dockerfile
+    ports:
+      - "8082:80"
+    depends_on:
+      - backend
+      - auth-service
+    networks:
+      - restaurant-network
+
+  e2e-tests:
+    image: cypress/browsers:latest
+    working_dir: /e2e
+    volumes:
+      - ./front:/e2e
+      - cypress_cache:/root/.cache/Cypress
+    depends_on:
+      - frontend
+    networks:
+      - restaurant-network
+    ports:
+      - "9222:9222"
+    command: sh -c "npm install --legacy-peer-deps && npx cypress install && npx cypress run --browser chrome --config baseUrl=http://frontend:80"
+
+  integration-tests:
+    image: maven:3.9-eclipse-temurin-17-alpine
+    working_dir: /app
+    volumes:
+      - .:/app
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - backend
+    command: sh -c "./mvnw test"
+
+networks:
+  restaurant-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  cypress_cache:

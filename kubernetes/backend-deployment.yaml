@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: restaurant-backend
+  namespace: restaurant
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: restaurant-backend
+  template:
+    metadata:
+      labels:
+        app: restaurant-backend
+    spec:
+      containers:
+      - name: backend
+        image: marczakx/restaurant-backend:latest
+        ports:
+        - containerPort: 8081
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: production

@@ -1,6 +1,6 @@
 package marczakx.restaurant.model.dto;
 
-import java.util.Set;
+import java.util.*;
 
 import marczakx.restaurant.model.entity.Addition;
 
@@ -11,5 +11,7 @@ public record MenuItemDto (
     Long id,
     String name,
     Float price,
-    Set<Addition> additions
+    List<Addition> additions,
+    String menuItemTypeName,
+    Set<Long> cuisineIds
 ) {}
