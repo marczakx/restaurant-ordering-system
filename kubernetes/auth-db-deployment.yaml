@@ -23,3 +23,10 @@ spec:
           value: postgres
         - name: POSTGRES_PASSWORD
           value: dbpas-change-it
+        volumeMounts:
+        - name: init-sql
+          mountPath: /docker-entrypoint-initdb.d
+      volumes:
+      - name: init-sql
+        configMap:
+          name: auth-db-init
