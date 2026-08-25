@@ -12,46 +12,16 @@ services:
     networks:
       - restaurant-network
 
-  auth-db:
-    image: postgres:15
-    restart: always
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.3
+    command: start-dev
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: dbpas-change-it
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 1s
-      timeout: 5s
-      retries: 10
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+    ports:
+      - "8080:8080"
     networks:
       - restaurant-network
-
-  auth-service:
-    image: marczakx/auth:2
-    environment:
-      - SPRING_DATASOURCE_PASSWORD=dbpas-change-it
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://auth-db:5432/postgres
-      - SPRING_DATASOURCE_USERNAME=postgres
-      - SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=org.hibernate.dialect.PostgreSQLDialect
-      - JWT_SECRET=${JWT_SECRET:-++++++++++++++++++++++CHANGE+IT+++++++++++++++++++++++++++++++++}
-    depends_on:
-      auth-db:
-        condition: service_healthy
-    networks:
-      - restaurant-network
-
-  auth-liquibase:
-    image: liquibase/liquibase:4.19
-    volumes:
-      - ./liquibase/:/liquibase/changelog/
-      #- ~/.m2/repository/org/postgresql/postgresql/42.6.2/postgresql-42.6.2.jar:/liquibase/lib/postgresql.jar
-    command: update --url=jdbc:postgresql://auth-db:5432/postgres --changelog-file=changelog/changelog.xml  --username=postgres --password=dbpas-change-it
-    depends_on:
-      auth-db:
-        condition: service_healthy
-    networks:
-      - restaurant-network
-
   backend:
     build:
       context: .
@@ -77,7 +47,7 @@ services:
       - "8082:80"
     depends_on:
       - backend
-      - auth-service
+      - keycloak
     networks:
       - restaurant-network
 
