@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak-lb
+  namespace: restaurant
+spec:
+  selector:
+    app: keycloak
+  ports:
+    - protocol: TCP
+      # External port mirrors the docker-compose host port convention (8090 -> 8080).
+      port: 8090
+      targetPort: 8080
+  type: LoadBalancer
