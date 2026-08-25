@@ -1,22 +1,27 @@
-FROM cypress/browsers:node-20.11.0-chrome-120.0.6099.109-1.v1
+# Self-contained Cypress E2E runner image.
+#
+# Unlike the docker-compose `e2e-tests` service (which mounts the source tree),
+# Kubernetes cannot mount local directories into a Job, so the test sources and
+# dependencies are baked into this image. The target application URL is provided
+# at runtime via the CYPRESS_BASE_URL environment variable, e.g.:
+#
+#   docker run --rm -e CYPRESS_BASE_URL=http://frontend:80 restaurant-e2e:latest
+#
+FROM cypress/browsers:node-20.11.0-chrome-121.0.6167.85-1-ff-120.0-edge-121.0.2277.83-1
 
-WORKDIR /app
+WORKDIR /e2e
 
-# Copy package files
+# Copy dependency manifest first for better layer caching
 COPY package.json ./
+
+RUN npm install --legacy-peer-deps && npx cypress install
+
+# Copy Cypress configuration and test sources
 COPY cypress.config.js ./
+COPY cypress ./cypress
 
-# Install dependencies including Cypress
-RUN npm install --legacy-peer-deps
+# Default target: frontend service inside the "restaurant" namespace.
+# Override with -e CYPRESS_BASE_URL=... when running the Job.
+ENV CYPRESS_BASE_URL=http://frontend:80
 
-# Copy source code
-COPY . .
-
-# Build the Angular app
-RUN npx ng build
-
-# Expose port for the dev server
-EXPOSE 4200
-
-# Start the dev server
-CMD ["npx", "ng", "serve", "--host", "0.0.0.0", "--port", "4200"]
+CMD ["npx", "cypress", "run", "--browser", "chrome"]

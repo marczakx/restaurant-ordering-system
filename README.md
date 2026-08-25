@@ -45,6 +45,75 @@ To stop all services:
 docker-compose down
 ```
 
+### Image Versioning
+
+All images pushed to Docker Hub are versioned. The version is stored in the
+`VERSION` file and every image is tagged twice: `<version>` and `latest`.
+Kubernetes manifests reference the pinned version tag.
+
+Images built from this repository:
+- `marczakx/restaurant-backend` (root `Dockerfile`)
+- `marczakx/restaurant-frontend` (`front/Dockerfile`)
+- `marczakx/restaurant-e2e` (`front/Dockerfile.e2e`, Cypress runner)
+
+Build and push (all images or a single target):
+```sh
+./scripts/build-and-push.sh              # backend + frontend + e2e
+./scripts/build-and-push.sh e2e          # only the E2E runner
+```
+
+To release a new version, bump `VERSION` and update the pinned tags in
+`kubernetes/*-deployment.yaml` / `kubernetes/e2e-tests-job.yaml`.
+
+### Running E2E Tests on Kubernetes
+
+The Cypress E2E tests can be executed against the application deployed in the
+`restaurant` namespace. The `baseUrl` is configurable via the `CYPRESS_BASE_URL`
+environment variable (default: `http://localhost:8082`).
+
+#### Option A – In-cluster Job (recommended)
+
+Tests run as a Kubernetes Job inside the cluster and target the frontend service
+directly (`http://frontend:80`), so no ingress or LoadBalancer access is needed:
+
+```sh
+./scripts/run-e2e-k8s.sh
+```
+
+The script builds the runner image from `front/Dockerfile.e2e` (tagged with the
+version from `VERSION`), loads it into a local minikube/kind cluster when
+detected, applies `kubernetes/e2e-tests-job.yaml` and streams the results.
+
+Useful overrides:
+```sh
+K8S_NAMESPACE=restaurant \
+E2E_IMAGE=marczakx/restaurant-e2e:latest \
+CYPRESS_BASE_URL=http://frontend:80 \
+./scripts/run-e2e-k8s.sh
+```
+
+Manual steps, if preferred:
+```sh
+./scripts/build-and-push.sh e2e
+kubectl delete job e2e-tests -n restaurant --ignore-not-found=true
+kubectl apply -f kubernetes/e2e-tests-job.yaml -n restaurant
+kubectl wait --for=condition=complete --timeout=15m job/e2e-tests -n restaurant
+kubectl logs job/e2e-tests -n restaurant
+```
+
+#### Option B – From the workstation
+
+Forward the frontend service to localhost and run Cypress locally:
+```sh
+kubectl port-forward svc/frontend 8082:80 -n restaurant
+cd front && npm run cypress:run
+```
+
+Or point Cypress at the LoadBalancer/ingress address:
+```sh
+cd front && CYPRESS_BASE_URL=http://<external-ip> npm run cypress:run
+```
+
 ### Recent Changes
 - Fixed integration-tests container to use Maven JDK image
 - Added Docker socket mounting for Testcontainers
