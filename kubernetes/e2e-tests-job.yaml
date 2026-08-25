@@ -43,11 +43,13 @@ spec:
             - name: CYPRESS_BASE_URL
               value: http://frontend:80
           resources:
+            # Low CPU request so the Job fits on a small single-node cluster;
+            # the limit still allows bursting when the node has spare capacity.
             requests:
-              cpu: 250m
+              cpu: 50m
               memory: 512Mi
             limits:
-              cpu: 500m
+              cpu: "2"
               memory: 1Gi
           volumeMounts:
             # Chrome requires a larger /dev/shm than the container default (64MB)
