@@ -127,18 +127,27 @@ cd front && CYPRESS_BASE_URL=http://<external-ip> npm run cypress:run
 
 ### Code Review Notes and Suggestions
 
-#### Security
-- **Passwords stored in plain text**: User passwords are stored as plain text (e.g., `admin123`). Should use BCrypt/Argon2 hashing with Spring Security `BCryptPasswordEncoder`.
-- **CORS configuration**: `@CrossOrigin` without restrictions allows access from any origin. Should configure allowed origins explicitly.
-- **Authentication token**: Current token-based auth generates random UUID but doesn't validate it. Should implement proper JWT or session-based authentication.
+> Last reviewed against the current codebase (Keycloak-based authentication,
+> Spring Boot 3.2 backend).
 
-#### Code Quality
-- **OrderService.saveOrder**: Saves additionOrderItems and orderItems separately before saving order. Should use CascadeType.ALL on relationships.
-- **OrderService.getOrderById**: Throws RuntimeException instead of custom exception. Should add global @ControllerAdvice for error handling.
-- **MenuService.getMenuItemsByTypeName**: Uses orElseThrow() without clear error message. Should add descriptive message.
-- **OrderService.addItemToOrder**: Creates MenuItem without price. Should verify item exists in database.
-- **Order entity**: Uses CascadeType.MERGE. Should consider CascadeType.ALL or PERSIST for consistency.
-- **OrderItem and AdditionOrderItem**: Missing @ManyToOne relationship with Order. Less readable.
+#### Open Issues
+
+##### Security
+- **No server-side authentication**: The backend has no Spring Security dependency and never validates the Keycloak token sent by the frontend (`accesstoken` header) — every `/api/**` endpoint is publicly accessible. Add an OAuth2 resource-server setup (e.g., `spring-boot-starter-oauth2-resource-server`) that verifies JWTs issued by Keycloak.
+
+##### Code Quality
+- **RuntimeException instead of custom exceptions**: `OrderService` throws raw `RuntimeException` ("Order not found", "Order item not found") and there is no global `@ControllerAdvice`. Introduce domain-specific exceptions and a global error handler.
+- **MenuService.getMenuItemsByTypeName**: Uses a bare `orElseThrow()` with no descriptive error message.
+- **OrderService.addItemToOrder**: Builds a detached `MenuItem` reference straight from the DTO instead of loading and verifying that the item exists in the database.
+- **Unidirectional relationships**: `OrderItem` and `AdditionOrderItem` have no `@ManyToOne` back-reference to their parent (`Order` / `OrderItem`), so navigation is only possible from the parent side.
+
+#### Resolved in Earlier Refactors
+- ~~Passwords stored in plain text~~ – Authentication is delegated to Keycloak; the only seeded user password is stored as a BCrypt hash (`liquibase/scripts/users_202401281641.sql`).
+- ~~CORS via unrestricted `@CrossOrigin`~~ – No `@CrossOrigin` annotations remain; CORS for `/api/*` is configured explicitly in `front/nginx.conf`.
+- ~~Random UUID token without validation~~ – Replaced by Keycloak OIDC tokens obtained by the Angular frontend (server-side validation is still open, see above).
+- ~~`saveOrder` saving children separately~~ – Single `orderRepository.save(order)` call; `Order.orderItems` cascades with `CascadeType.ALL` and `orphanRemoval = true`.
+- ~~`Order` entity using `CascadeType.MERGE`~~ – Now `CascadeType.ALL`.
+- ~~`addItemToOrder` creating `MenuItem` without price~~ – Price is now taken from the DTO.
 
 ## Application Architecture
 
