@@ -34,6 +34,27 @@ import { Order, OrderStatus } from '../../models/models';
           title="Classic list view">
           ☰☰
         </button>
+        <button 
+          class="view-btn" 
+          [class.active]="viewMode === 'table'"
+          (click)="setViewMode('table')"
+          title="Table view">
+          ▦
+        </button>
+        <button 
+          class="view-btn" 
+          [class.active]="viewMode === 'board'"
+          (click)="setViewMode('board')"
+          title="Kanban board view">
+          ◫
+        </button>
+        <button 
+          class="view-btn" 
+          [class.active]="viewMode === 'compact'"
+          (click)="setViewMode('compact')"
+          title="Compact view">
+          ≡
+        </button>
       </div>
 
       <div class="orders-list" [class.list-view]="viewMode === 'list'" [class.classic-view]="viewMode === 'classic'" *ngIf="orders.length > 0">
@@ -152,6 +173,131 @@ import { Order, OrderStatus } from '../../models/models';
             </div>
             <div class="order-total">
               <strong>Total: {{ getOrderTotal(order) | currency }}</strong>
+            </div>
+          </div>
+        </ng-container>
+
+        <!-- Table View -->
+        <ng-container *ngIf="viewMode === 'table'">
+          <div class="orders-table-wrapper">
+            <table class="orders-table">
+              <thead>
+                <tr>
+                  <th>Zamówienie</th>
+                  <th>Klient</th>
+                  <th>Pozycje</th>
+                  <th>Suma</th>
+                  <th>Status</th>
+                  <th>Zmień status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <ng-container *ngFor="let order of orders">
+                  <tr class="orders-table-row" (click)="toggleExpanded(order.id)">
+                    <td>#{{ order.id }}</td>
+                    <td>{{ order.customer }}</td>
+                    <td>{{ getItemCount(order) }}</td>
+                    <td>{{ getOrderTotal(order) | currency }}</td>
+                    <td>
+                      <span class="status-badge" [ngClass]="getStatusClass(order.status)">
+                        {{ getStatusLabel(order.status) }}
+                      </span>
+                    </td>
+                    <td (click)="$event.stopPropagation()">
+                      <div class="status-buttons">
+                        <button class="status-btn status-todo" [class.active]="order.status === 'TO_DO'" (click)="updateStatus(order, 'TO_DO')">Do realizacji</button>
+                        <button class="status-btn status-progress" [class.active]="order.status === 'IN_PROGRESS'" (click)="updateStatus(order, 'IN_PROGRESS')">W trakcie</button>
+                        <button class="status-btn status-done" [class.active]="order.status === 'DONE'" (click)="updateStatus(order, 'DONE')">Gotowe</button>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr class="orders-table-details" *ngIf="expandedOrderId === order.id">
+                    <td colspan="6">
+                      <div class="order-item" *ngFor="let item of order.orderItems">
+                        <div class="order-item-info">
+                          <span>{{ item.menuItem.name }}</span>
+                          <div class="item-controls">
+                            <button class="qty-btn" (click)="decreaseQuantity(order, item)" title="Decrease quantity">−</button>
+                            <span class="quantity">{{ item.quantity }}</span>
+                            <button class="qty-btn" (click)="increaseQuantity(order, item)" title="Increase quantity">+</button>
+                            <button class="remove-btn" (click)="removeItem(order, item)" title="Remove item">✕</button>
+                          </div>
+                        </div>
+                        <span>{{ item.price * item.quantity | currency }}</span>
+                      </div>
+                    </td>
+                  </tr>
+                </ng-container>
+              </tbody>
+            </table>
+          </div>
+        </ng-container>
+
+        <!-- Board View -->
+        <ng-container *ngIf="viewMode === 'board'">
+          <div class="board">
+            <div class="board-column" *ngFor="let column of boardColumns">
+              <div class="board-column-header" [ngClass]="column.headerClass">
+                <span>{{ column.label }}</span>
+                <span class="board-column-count">{{ getOrdersByStatus(column.status).length }}</span>
+              </div>
+              <div class="board-cards">
+                <div class="board-card" *ngFor="let order of getOrdersByStatus(column.status)">
+                  <div class="board-card-header">
+                    <span class="board-order-id">#{{ order.id }}</span>
+                    <strong>{{ getOrderTotal(order) | currency }}</strong>
+                  </div>
+                  <p class="board-customer">{{ order.customer }}</p>
+                  <ul class="board-items">
+                    <li *ngFor="let item of order.orderItems">{{ item.quantity }}× {{ item.menuItem.name }}</li>
+                  </ul>
+                  <div class="status-buttons">
+                    <button class="status-btn status-todo" [class.active]="order.status === 'TO_DO'" (click)="updateStatus(order, 'TO_DO')">Do realizacji</button>
+                    <button class="status-btn status-progress" [class.active]="order.status === 'IN_PROGRESS'" (click)="updateStatus(order, 'IN_PROGRESS')">W trakcie</button>
+                    <button class="status-btn status-done" [class.active]="order.status === 'DONE'" (click)="updateStatus(order, 'DONE')">Gotowe</button>
+                  </div>
+                </div>
+                <p class="board-empty" *ngIf="getOrdersByStatus(column.status).length === 0">Brak zamówień</p>
+              </div>
+            </div>
+          </div>
+        </ng-container>
+
+        <!-- Compact View -->
+        <ng-container *ngIf="viewMode === 'compact'">
+          <div class="compact-list">
+            <div class="compact-row" *ngFor="let order of orders">
+              <div class="compact-summary" (click)="toggleExpanded(order.id)">
+                <span class="compact-id">#{{ order.id }}</span>
+                <span class="compact-customer">{{ order.customer }}</span>
+                <span class="compact-count">{{ getItemCount(order) }} poz.</span>
+                <span class="compact-total">{{ getOrderTotal(order) | currency }}</span>
+                <span class="status-badge" [ngClass]="getStatusClass(order.status)">
+                  {{ getStatusLabel(order.status) }}
+                </span>
+                <span class="compact-chevron">{{ expandedOrderId === order.id ? '▲' : '▼' }}</span>
+              </div>
+              <div class="compact-details" *ngIf="expandedOrderId === order.id">
+                <div class="order-item" *ngFor="let item of order.orderItems">
+                  <div class="order-item-info">
+                    <span>{{ item.menuItem.name }}</span>
+                    <div class="item-controls">
+                      <button class="qty-btn" (click)="decreaseQuantity(order, item)" title="Decrease quantity">−</button>
+                      <span class="quantity">{{ item.quantity }}</span>
+                      <button class="qty-btn" (click)="increaseQuantity(order, item)" title="Increase quantity">+</button>
+                      <button class="remove-btn" (click)="removeItem(order, item)" title="Remove item">✕</button>
+                    </div>
+                  </div>
+                  <span>{{ item.price * item.quantity | currency }}</span>
+                </div>
+                <div class="compact-details-actions">
+                  <div class="status-buttons">
+                    <button class="status-btn status-todo" [class.active]="order.status === 'TO_DO'" (click)="updateStatus(order, 'TO_DO')">Do realizacji</button>
+                    <button class="status-btn status-progress" [class.active]="order.status === 'IN_PROGRESS'" (click)="updateStatus(order, 'IN_PROGRESS')">W trakcie</button>
+                    <button class="status-btn status-done" [class.active]="order.status === 'DONE'" (click)="updateStatus(order, 'DONE')">Gotowe</button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </ng-container>
@@ -398,6 +544,179 @@ import { Order, OrderStatus } from '../../models/models';
       align-items: flex-end;
       gap: 0.5rem;
     }
+    /* Table view */
+    .orders-table-wrapper {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      overflow-x: auto;
+    }
+    .orders-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .orders-table th {
+      text-align: left;
+      padding: 0.75rem 1rem;
+      background: #f5f5f5;
+      color: #555;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      border-bottom: 2px solid #e0e0e0;
+      white-space: nowrap;
+    }
+    .orders-table td {
+      padding: 0.65rem 1rem;
+      border-bottom: 1px solid #eee;
+      font-size: 0.9rem;
+      vertical-align: middle;
+    }
+    .orders-table-row {
+      cursor: pointer;
+    }
+    .orders-table-row:hover {
+      background: #fafafa;
+    }
+    .orders-table-details td {
+      background: #fafafa;
+    }
+
+    /* Board view */
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      align-items: start;
+    }
+    .board-column {
+      background: #f0f2f5;
+      border-radius: 8px;
+      padding: 0.75rem;
+      min-height: 200px;
+    }
+    .board-column-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      color: white;
+      font-weight: bold;
+      margin-bottom: 0.75rem;
+    }
+    .board-column-header.column-todo {
+      background: #ff9800;
+    }
+    .board-column-header.column-progress {
+      background: #2196f3;
+    }
+    .board-column-header.column-done {
+      background: #4caf50;
+    }
+    .board-column-count {
+      background: rgba(255,255,255,0.3);
+      border-radius: 10px;
+      padding: 0 0.5rem;
+      font-size: 0.8rem;
+    }
+    .board-card {
+      background: white;
+      border-radius: 6px;
+      padding: 0.75rem;
+      margin-bottom: 0.5rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+    }
+    .board-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.25rem;
+    }
+    .board-order-id {
+      color: #1976d2;
+      font-weight: bold;
+    }
+    .board-customer {
+      color: #666;
+      font-size: 0.85rem;
+      margin: 0 0 0.5rem;
+    }
+    .board-items {
+      margin: 0 0 0.5rem;
+      padding-left: 1.1rem;
+      font-size: 0.85rem;
+      color: #444;
+    }
+    .board-empty {
+      color: #999;
+      font-size: 0.85rem;
+      text-align: center;
+      margin: 1rem 0;
+    }
+
+    /* Compact view */
+    .compact-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+    .compact-row {
+      background: white;
+      border-radius: 6px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+    .compact-summary {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.5rem 0.75rem;
+      cursor: pointer;
+    }
+    .compact-summary:hover {
+      background: #fafafa;
+    }
+    .compact-id {
+      color: #1976d2;
+      font-weight: bold;
+      min-width: 3rem;
+    }
+    .compact-customer {
+      flex: 1;
+      color: #333;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .compact-count {
+      color: #777;
+      font-size: 0.8rem;
+      white-space: nowrap;
+    }
+    .compact-total {
+      font-weight: bold;
+      white-space: nowrap;
+    }
+    .compact-chevron {
+      color: #999;
+      font-size: 0.7rem;
+    }
+    .compact-details {
+      border-top: 1px solid #eee;
+      padding: 0.5rem 0.75rem;
+    }
+    .compact-details-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 0.5rem;
+    }
+
+    @media (max-width: 900px) {
+      .board {
+        grid-template-columns: 1fr;
+      }
+    }
     .no-orders {
       text-align: center;
       padding: 2rem;
@@ -407,7 +726,13 @@ import { Order, OrderStatus } from '../../models/models';
 })
   export class OrdersComponent implements OnInit {
     orders: Order[] = [];
-    viewMode: 'cards' | 'list' | 'classic' = 'cards';
+    viewMode: 'cards' | 'list' | 'classic' | 'table' | 'board' | 'compact' = 'cards';
+    expandedOrderId: number | null = null;
+    boardColumns: { status: OrderStatus; label: string; headerClass: string }[] = [
+      { status: 'TO_DO', label: 'Do realizacji', headerClass: 'column-todo' },
+      { status: 'IN_PROGRESS', label: 'W trakcie', headerClass: 'column-progress' },
+      { status: 'DONE', label: 'Gotowe', headerClass: 'column-done' }
+    ];
 
   constructor(private orderService: OrderService) {}
 
@@ -421,8 +746,20 @@ import { Order, OrderStatus } from '../../models/models';
     });
   }
 
-  setViewMode(mode: 'cards' | 'list' | 'classic') {
+  setViewMode(mode: 'cards' | 'list' | 'classic' | 'table' | 'board' | 'compact') {
     this.viewMode = mode;
+  }
+
+  toggleExpanded(orderId: number) {
+    this.expandedOrderId = this.expandedOrderId === orderId ? null : orderId;
+  }
+
+  getItemCount(order: Order): number {
+    return order.orderItems.reduce((sum, item) => sum + item.quantity, 0);
+  }
+
+  getOrdersByStatus(status: OrderStatus): Order[] {
+    return this.orders.filter(order => order.status === status);
   }
 
   getOrderTotal(order: Order): number {
