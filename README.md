@@ -140,73 +140,128 @@ cd front && CYPRESS_BASE_URL=http://<external-ip> npm run cypress:run
 - **Order entity**: Uses CascadeType.MERGE. Should consider CascadeType.ALL or PERSIST for consistency.
 - **OrderItem and AdditionOrderItem**: Missing @ManyToOne relationship with Order. Less readable.
 
-### Architecture
-![Application Architecture Diagram](https://mermaid.ink/img/poneillz10001000100010001000100010001000)
+## Application Architecture
 
-### Architecture
-### Application Architecture
+The system is a layered web application. An **Angular SPA** talks to a
+**Spring Boot** backend through an **Nginx** reverse proxy. Authentication is
+delegated to **Keycloak**, data is stored in **PostgreSQL**, and order updates
+are pushed to clients in real time over **WebSocket (STOMP)**.
+
+### Layers at a Glance
+
+| Layer          | Technology         | Key components                                                                                     |
+|----------------|--------------------|----------------------------------------------------------------------------------------------------|
+| Client         | Angular SPA        | Login, Menu, Orders components                                                                     |
+| Edge / proxy   | Nginx              | Routes `/api/*`, `/ws`, `/keycloak/*`                                                              |
+| Authentication | Keycloak           | Realm `restaurant`, client `restaurant-client`                                                     |
+| Presentation   | Spring MVC         | `MenuController` (`/api/menu`), `OrderController` (`/api/order`)                                   |
+| Real-time      | STOMP over WebSocket | Endpoint `/ws`, topic `/order`                                                                   |
+| Business logic | Spring services    | `MenuService`, `OrderService`                                                                      |
+| Data access    | Spring Data JPA    | Cuisines, MenuItem, MenuItemType, Order, OrderItem, AdditionOrderItem repositories                 |
+| Persistence    | PostgreSQL         | `restaurant` database                                                                              |
+
+### Component Diagram
 
 ```mermaid
 graph TD
-%% Styles
-classDef client fill:#e8f4fd,stroke:#1976d2,stroke-width:2px;
-classDef presentation fill:#e8fdf5,stroke:#2e7d32,stroke-width:2px;
-classDef business fill:#fff3e0,stroke:#ef6c00,stroke-width:2px;
-classDef data fill:#f9f9f9,stroke:#616161,stroke-width:1px,stroke-dasharray: 5 5;
+    %% ---------- Styles ----------
+    classDef client fill:#e8f4fd,stroke:#1976d2,stroke-width:2px;
+    classDef edge fill:#ede7f6,stroke:#5e35b1,stroke-width:2px;
+    classDef auth fill:#fff9c4,stroke:#f9a825,stroke-width:2px;
+    classDef presentation fill:#e8fdf5,stroke:#2e7d32,stroke-width:2px;
+    classDef business fill:#fff3e0,stroke:#ef6c00,stroke-width:2px;
+    classDef dataAccess fill:#fce4ec,stroke:#c2185b,stroke-width:2px;
+    classDef data fill:#eceff1,stroke:#455a64,stroke-width:2px;
 
-%% Client Layer
-subgraph Client["🌐 Client Layer"]
-direction TB
-FE[Angular Frontend]
-FE -->|HTTP Requests| BE
-end
-class FE client;
+    USER(["👤 User"])
 
-%% Presentation Layer
-subgraph Presentation["📋 Presentation Layer"]
-direction TB
-OC[OrderController]
-MC[MenuController]
-AC[AuthController]
-OC -->|REST API| BE
-MC -->|REST API| BE
-AC -->|REST API| BE
-end
-class OC,MC,AC presentation;
+    subgraph CLIENT["🌐 Client Layer — Angular SPA"]
+        direction LR
+        LOGIN["Login Component"]
+        MENU["Menu Component"]
+        ORDERS["Orders Component"]
+    end
 
-%% Business Logic Layer
-subgraph Business["🔧 Business Logic Layer"]
-direction TB
-OS[OrderService]
-MS[MenuService]
-OS -->|Manages| OR[Order Repository]
-OS -->|Manages| AOI[AdditionOrderItem Repository]
-OS -->|Manages| OI[OrderItem Repository]
-MS -->|Manages| MR[MenuItem Repository]
-MS -->|Manages| MTR[MenuItemType Repository]
-MS -->|Manages| CR[Cuisines Repository]
-MS -->|Handles| AM[Addition Logic]
-end
-class OS,MS business;
+    NGX["🔀 Nginx Reverse Proxy<br/>/api · /ws · /keycloak"]
 
-%% Data Layer
-subgraph Data["💾 Data Layer"]
-direction TB
-PG[(PostgreSQL Database)]
-OR -->|CRUD Operations| PG
-MR -->|CRUD Operations| PG
-MTR -->|CRUD Operations| PG
-CR -->|CRUD Operations| PG
-AOI -->|CRUD Operations| PG
-OI -->|CRUD Operations| PG
-end
-class PG data;
+    KC[("🔐 Keycloak<br/>realm: restaurant")]
 
-%% Connections between layers
-BE[Backend Spring Boot] -->|Routes Requests| OC
-BE -->|Routes Requests| MC
-BE -->|Routes Requests| AC
-OS -->|Sends Events| WS[WebSocket Config]
-WS -->|Broadcasts| FE
+    subgraph BACKEND["☕ Backend — Spring Boot"]
+        direction TB
+        subgraph PRESENTATION["📋 Presentation Layer"]
+            MC["MenuController<br/>/api/menu"]
+            OCC["OrderController<br/>/api/order"]
+        end
+        subgraph BUSINESS["🔧 Business Logic Layer"]
+            MS["MenuService"]
+            OS["OrderService"]
+        end
+        WSC["📡 WebSocket Configuration<br/>STOMP endpoint /ws · topic /order"]
+        subgraph DATAACCESS["🗃️ Data Access Layer"]
+            MR["MenuItemRepository"]
+            MTR["MenuItemTypeRepository"]
+            CR["CuisinesRepository"]
+            ORR["OrderRepository"]
+            OIR["OrderItemRepository"]
+            AOR["AdditionOrderItemRepository"]
+        end
+    end
 
-style BE fill:#e3f2fd,stroke:#1565c0,stroke-width:3px;
+    PG[("💾 PostgreSQL")]
+
+    %% ---------- Flows ----------
+    USER --> LOGIN
+    USER --> MENU
+    USER --> ORDERS
+
+    LOGIN -.->|"OIDC token request"| KC
+    MENU -->|"HTTP /api/menu"| NGX
+    ORDERS -->|"HTTP /api/order"| NGX
+    ORDERS <-->|"WebSocket /ws"| NGX
+
+    NGX --> MC
+    NGX --> OCC
+    NGX <-.->|"upgrade"| WSC
+
+    MC --> MS
+    OCC --> OS
+    OCC -->|"publishes updates"| WSC
+    WSC -.->|"live order events"| ORDERS
+
+    MS --> MR
+    MS --> MTR
+    MS --> CR
+    OS --> ORR
+    OS --> OIR
+    OS --> AOR
+
+    MR -->|"JPA"| PG
+    MTR -->|"JPA"| PG
+    CR -->|"JPA"| PG
+    ORR -->|"JPA"| PG
+    OIR -->|"JPA"| PG
+    AOR -->|"JPA"| PG
+
+    class LOGIN,MENU,ORDERS client;
+    class NGX edge;
+    class KC auth;
+    class MC,OCC presentation;
+    class MS,OS business;
+    class MR,MTR,CR,ORR,OIR,AOR dataAccess;
+    class PG data;
+```
+
+### Request Flow
+
+1. **Authentication** – the browser obtains a token from **Keycloak**
+   (proxied by Nginx under `/keycloak`). The Angular `AuthGuard` protects
+   routes and the `AuthInterceptor` attaches the token to API calls.
+2. **Menu browsing** – `GET /api/menu/**` requests are proxied by Nginx to
+   `MenuController`, which delegates to `MenuService`.
+3. **Ordering** – order requests reach `OrderController`, which delegates to
+   `OrderService`.
+4. **Live updates** – after every order mutation, `OrderController` publishes
+   the updated order to the STOMP topic `/order`; all connected clients receive
+   it instantly through the `/ws` endpoint.
+5. **Persistence** – both services read and write through their Spring Data
+   JPA repositories into PostgreSQL.
