@@ -1,11 +1,22 @@
 describe('Order Status Change E2E Tests', () => {
   beforeEach(() => {
-    // Login first since /orders is protected by authGuard
+    // Login via Keycloak (proxied by the frontend nginx under /keycloak)
+    // since /orders is protected by authGuard
     cy.visit('/');
     cy.get('input[name="username"]').type('demo');
     cy.get('input[name="password"]').type('demo');
-    cy.request('POST', '/login', { user: 'demo', password: 'demo' }).then((response) => {
-      window.localStorage.setItem('auth_token', response.body.token);
+    cy.request({
+      method: 'POST',
+      url: '/keycloak/realms/restaurant/protocol/openid-connect/token',
+      form: true,
+      body: {
+        grant_type: 'password',
+        client_id: 'restaurant-client',
+        username: 'demo',
+        password: 'demo'
+      }
+    }).then((response) => {
+      window.localStorage.setItem('auth_token', response.body.access_token);
       cy.visit('/menu');
       cy.reload();
       cy.wait(2000);

@@ -1,0 +1,46 @@
+# Keycloak realm configuration for the restaurant application.
+# Mounted into the Keycloak pod at /opt/keycloak/data/import/ and imported
+# automatically on startup via `start-dev --import-realm`.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-realm
+  namespace: restaurant
+data:
+  restaurant-realm.json: |
+    {
+      "realm": "restaurant",
+      "enabled": true,
+      "clients": [
+        {
+          "clientId": "restaurant-client",
+          "name": "Restaurant Frontend",
+          "enabled": true,
+          "protocol": "openid-connect",
+          "publicClient": true,
+          "directAccessGrantsEnabled": true,
+          "standardFlowEnabled": true,
+          "redirectUris": ["*"],
+          "webOrigins": ["*"],
+          "defaultClientScopes": ["web-origins", "acr", "profile", "roles", "email"],
+          "optionalClientScopes": ["address", "phone", "offline_access", "microprofile-jwt"]
+        }
+      ],
+      "users": [
+        {
+          "username": "demo",
+          "enabled": true,
+          "email": "demo@restaurant.local",
+          "emailVerified": true,
+          "firstName": "Demo",
+          "lastName": "User",
+          "credentials": [
+            {
+              "type": "password",
+              "value": "demo",
+              "temporary": false
+            }
+          ]
+        }
+      ]
+    }

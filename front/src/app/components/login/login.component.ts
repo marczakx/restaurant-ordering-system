@@ -115,11 +115,11 @@ export class LoginComponent {
   login(): void {
     this.error = '';
     this.authService.login(this.username, this.password).subscribe({
-      next: data => {
-        this.authService.saveToken(data.token);
+      next: (data: any) => {
+        this.authService.saveToken(data.access_token);
         this.router.navigate(['/menu']);
       },
-      error: err => {
+      error: (err: any) => {
         this.authService.cleanToken();
         this.error = 'Login failed. Please check your credentials.';
       }

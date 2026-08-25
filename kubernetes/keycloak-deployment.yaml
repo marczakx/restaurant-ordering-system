@@ -16,7 +16,8 @@ spec:
       containers:
       - name: keycloak
         image: quay.io/keycloak/keycloak:24.0.3
-        args: ["start-dev"]
+        # Import the "restaurant" realm (client + demo user) on startup.
+        args: ["start-dev", "--import-realm"]
         ports:
         - containerPort: 8080
         env:
@@ -26,3 +27,10 @@ spec:
           value: admin
         - name: KC_HOSTNAME
           value: keycloak
+        volumeMounts:
+        - name: realm-import
+          mountPath: /opt/keycloak/data/import
+      volumes:
+      - name: realm-import
+        configMap:
+          name: keycloak-realm

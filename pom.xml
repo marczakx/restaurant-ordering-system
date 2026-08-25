@@ -84,6 +84,14 @@
 			<scope>test</scope>
 		</dependency>
 
+		<!-- commons-compress (pulled by Testcontainers) requires commons-lang3 3.14+ -->
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-lang3</artifactId>
+			<version>3.14.0</version>
+			<scope>test</scope>
+		</dependency>
+
     <dependency>
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>

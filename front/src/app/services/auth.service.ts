@@ -13,7 +13,9 @@ export class AuthService {
 
   private readonly TOKEN_KEY = 'auth_token';
   private token: string | null = null;
-  private readonly KEYCLOAK_URL = 'http://keycloak:8080';
+  // Relative URL - Keycloak is proxied by the frontend nginx under /keycloak/,
+  // so the same built bundle works in Docker Compose and Kubernetes.
+  private readonly KEYCLOAK_URL = '/keycloak';
   private readonly REALM = 'restaurant';
   private readonly CLIENT_ID = 'restaurant-client';
 

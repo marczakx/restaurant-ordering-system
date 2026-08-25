@@ -14,12 +14,19 @@ services:
 
   keycloak:
     image: quay.io/keycloak/keycloak:24.0.3
-    command: start-dev
+    # Stable hostname so the embedded H2 database can resolve it (AUTO_SERVER),
+    # and --import-realm to provision the "restaurant" realm on first start.
+    hostname: keycloak
+    command: start-dev --import-realm
     environment:
       - KEYCLOAK_ADMIN=admin
       - KEYCLOAK_ADMIN_PASSWORD=admin
+    volumes:
+      - ./keycloak:/opt/keycloak/data/import:ro
     ports:
-      - "8080:8080"
+      # Host port 8090 (8080 is often taken by other local services);
+      # containers reach Keycloak via http://keycloak:8080 inside the network.
+      - "8090:8080"
     networks:
       - restaurant-network
   backend:
@@ -71,6 +78,12 @@ services:
     volumes:
       - .:/app
       - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      # Let Testcontainers resolve mapped ports via the docker host gateway,
+      # required because the JVM itself runs inside a container.
+      - TESTCONTAINERS_HOST_OVERRIDE=host.docker.internal
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       - backend
     command: sh -c "./mvnw test"
