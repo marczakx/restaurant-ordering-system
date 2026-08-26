@@ -80,6 +80,17 @@ services:
     networks:
       - restaurant-network
 
+  # Angular unit tests (Karma/Jasmine) - runs headless Chrome inside the
+  # same browser image as the E2E suite, so no local browser is required.
+  frontend-unit-tests:
+    image: cypress/browsers:latest
+    working_dir: /e2e
+    volumes:
+      - ./front:/e2e
+    environment:
+      - CHROME_BIN=/usr/bin/google-chrome
+    command: sh -c "npm install --legacy-peer-deps && npx ng test --watch=false --karma-config=karma-ci.conf.js --browsers=ChromeHeadlessNoSandbox"
+
   e2e-tests:
     image: cypress/browsers:latest
     working_dir: /e2e

@@ -161,6 +161,20 @@ Or point Cypress at the LoadBalancer/ingress address:
 cd front && CYPRESS_BASE_URL=http://<external-ip> npm run cypress:run
 ```
 
+### Frontend Unit Tests
+
+Angular unit tests (Karma/Jasmine `*.spec.ts` files) run in a dedicated
+Compose service that reuses the Cypress browser image, so no local browser
+installation is required:
+
+```sh
+docker compose run --rm frontend-unit-tests
+```
+
+The service mounts the `front/` source tree, installs dependencies and runs
+`ng test` with headless Chrome (`front/karma-ci.conf.js` adds a
+`--no-sandbox` launcher variant required inside containers).
+
 ### Recent Changes
 - Fixed integration-tests container to use Maven JDK image
 - Added Docker socket mounting for Testcontainers
