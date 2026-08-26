@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: backend
-        image: marczakx/restaurant-backend:1.0.1
+        image: marczakx/restaurant-backend:e61ec88b
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
@@ -32,3 +32,9 @@ spec:
           value: restaurant
         - name: SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT
           value: org.hibernate.dialect.PostgreSQLDialect
+        # Google OAuth2 credentials for the /oauth2/authorization/google flow.
+        # Injected from the google-oauth Secret (created outside the repo from
+        # ~/.config/restaurant/secrets.env) – never hardcode them here.
+        envFrom:
+        - secretRef:
+            name: google-oauth
