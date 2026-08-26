@@ -54,6 +54,8 @@ describe('OrdersComponent', () => {
 
     fixture = TestBed.createComponent(OrdersComponent);
     component = fixture.componentInstance;
+    // Reset shared mock state mutated by other tests (e.g. optimistic status update)
+    mockOrder.status = 'TO_DO';
     fixture.detectChanges();
   });
 
