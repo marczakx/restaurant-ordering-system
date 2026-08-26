@@ -236,13 +236,23 @@ import { Order, OrderStatus } from '../../models/models';
         <!-- Board View -->
         <ng-container *ngIf="viewMode === 'board'">
           <div class="board">
+            <p class="board-hint">Przeciągnij kartę do innej kolumny, aby zmienić status zamówienia</p>
             <div class="board-column" *ngFor="let column of boardColumns">
               <div class="board-column-header" [ngClass]="column.headerClass">
                 <span>{{ column.label }}</span>
                 <span class="board-column-count">{{ getOrdersByStatus(column.status).length }}</span>
               </div>
-              <div class="board-cards">
-                <div class="board-card" *ngFor="let order of getOrdersByStatus(column.status)">
+              <div class="board-cards"
+                   [class.drop-target]="dragOverStatus === column.status && draggingOrderId !== null"
+                   (dragover)="onDragOver($event, column.status)"
+                   (dragleave)="onDragLeave($event, column.status)"
+                   (drop)="onDrop($event, column.status)">
+                <div class="board-card"
+                     *ngFor="let order of getOrdersByStatus(column.status)"
+                     [draggable]="true"
+                     [class.dragging]="draggingOrderId === order.id"
+                     (dragstart)="onDragStart(order, $event)"
+                     (dragend)="onDragEnd()">
                   <div class="board-card-header">
                     <span class="board-order-id">#{{ order.id }}</span>
                     <strong>{{ getOrderTotal(order) | currency }}</strong>
@@ -654,6 +664,26 @@ import { Order, OrderStatus } from '../../models/models';
       text-align: center;
       margin: 1rem 0;
     }
+    .board-hint {
+      grid-column: 1 / -1;
+      margin: 0 0 0.25rem;
+      color: #777;
+      font-size: 0.8rem;
+    }
+    .board-card[draggable="true"] {
+      cursor: grab;
+    }
+    .board-card.dragging {
+      opacity: 0.5;
+      border: 2px dashed #1976d2;
+    }
+    .board-cards.drop-target {
+      background: #e3f2fd;
+      outline: 2px dashed #1976d2;
+      outline-offset: -4px;
+      border-radius: 6px;
+      min-height: 120px;
+    }
 
     /* Compact view */
     .compact-list {
@@ -728,6 +758,8 @@ import { Order, OrderStatus } from '../../models/models';
     orders: Order[] = [];
     viewMode: 'cards' | 'list' | 'classic' | 'table' | 'board' | 'compact' = 'cards';
     expandedOrderId: number | null = null;
+    draggingOrderId: number | null = null;
+    dragOverStatus: OrderStatus | null = null;
     boardColumns: { status: OrderStatus; label: string; headerClass: string }[] = [
       { status: 'TO_DO', label: 'Do realizacji', headerClass: 'column-todo' },
       { status: 'IN_PROGRESS', label: 'W trakcie', headerClass: 'column-progress' },
@@ -760,6 +792,52 @@ import { Order, OrderStatus } from '../../models/models';
 
   getOrdersByStatus(status: OrderStatus): Order[] {
     return this.orders.filter(order => order.status === status);
+  }
+
+  onDragStart(order: Order, event: DragEvent) {
+    this.draggingOrderId = order.id;
+    event.dataTransfer?.setData('text/plain', String(order.id));
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+    }
+  }
+
+  onDragEnd() {
+    this.draggingOrderId = null;
+    this.dragOverStatus = null;
+  }
+
+  onDragOver(event: DragEvent, status: OrderStatus) {
+    event.preventDefault();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'move';
+    }
+    this.dragOverStatus = status;
+  }
+
+  onDragLeave(event: DragEvent, status: OrderStatus) {
+    const target = event.currentTarget as HTMLElement;
+    const related = event.relatedTarget as Node | null;
+    if (!related || !target.contains(related)) {
+      if (this.dragOverStatus === status) {
+        this.dragOverStatus = null;
+      }
+    }
+  }
+
+  onDrop(event: DragEvent, status: OrderStatus) {
+    event.preventDefault();
+    const rawId = event.dataTransfer?.getData('text/plain');
+    const orderId = rawId ? Number(rawId) : this.draggingOrderId;
+    this.draggingOrderId = null;
+    this.dragOverStatus = null;
+    if (orderId === null || Number.isNaN(orderId)) {
+      return;
+    }
+    const order = this.orders.find(o => o.id === orderId);
+    if (order && order.status !== status) {
+      this.updateStatus(order, status);
+    }
   }
 
   getOrderTotal(order: Order): number {

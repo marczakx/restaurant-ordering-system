@@ -68,6 +68,43 @@ describe('Order Layouts E2E Tests', () => {
     cy.get('.board-column-header').eq(2).should('contain', 'Gotowe');
   });
 
+  it('should move an order to another column by dragging', () => {
+    goToOrders();
+
+    cy.get('.view-btn[title="Kanban board view"]').click();
+
+    // Find a source column among "Do realizacji"/"W trakcie" that has a card
+    cy.get('.board-column').then(($columns) => {
+      let sourceIndex = -1;
+      for (let i = 0; i < 2; i++) {
+        if ($columns.eq(i).find('.board-card').length > 0) {
+          sourceIndex = i;
+          break;
+        }
+      }
+      expect(sourceIndex, 'at least one card outside the Done column').to.be.at.least(0);
+
+      const $sourceColumn = $columns.eq(sourceIndex);
+      const orderId = $sourceColumn.find('.board-card .board-order-id').first().text().trim();
+
+      // Simulate HTML5 drag & drop: dragstart on the card, then dragover + drop on the Done column
+      cy.wrap($sourceColumn.find('.board-card').first()).trigger('dragstart');
+      cy.get('.board-column')
+        .eq(2)
+        .find('.board-cards')
+        .trigger('dragover')
+        .trigger('drop');
+      cy.wait(2000);
+
+      // The dragged order should now be rendered inside the "Gotowe" column
+      cy.get('.board-column')
+        .eq(2)
+        .find('.board-card')
+        .contains('.board-order-id', orderId)
+        .should('exist');
+    });
+  });
+
   it('should move an order to the Done column from board view', () => {
     goToOrders();
 
