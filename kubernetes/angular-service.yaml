@@ -1,0 +1,17 @@
+# Internal service for the Angular SPA tier.
+#
+# ClusterIP only – reachable as http://angular:4200 from the Nginx
+# reverse proxy inside the "restaurant" namespace.
+apiVersion: v1
+kind: Service
+metadata:
+  name: angular
+  namespace: restaurant
+spec:
+  selector:
+    app: restaurant-angular
+  ports:
+    - protocol: TCP
+      port: 4200
+      targetPort: 4200
+  type: ClusterIP

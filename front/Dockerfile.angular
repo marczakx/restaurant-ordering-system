@@ -1,0 +1,20 @@
+# Angular SPA image.
+#
+# Builds the Angular application and serves the static bundle with `serve`
+# (single-page mode, so unknown routes fall back to index.html).
+# All API / WebSocket / Keycloak traffic is proxied by the separate Nginx
+# reverse-proxy image (see Dockerfile.nginx and nginx.conf).
+#
+FROM node:20-alpine AS build
+WORKDIR /app
+COPY package.json ./
+RUN npm install --legacy-peer-deps
+COPY . .
+RUN npx ng build
+
+FROM node:20-alpine
+WORKDIR /app
+RUN npm install --global serve@14
+COPY --from=build /app/dist/restaurant-frontend ./dist
+EXPOSE 4200
+CMD ["serve", "-s", "dist", "-l", "4200"]

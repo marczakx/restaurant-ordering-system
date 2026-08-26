@@ -9,7 +9,7 @@
 # Usage:
 #   ./scripts/build-and-push.sh              # build & push all images
 #   ./scripts/build-and-push.sh backend      # only backend
-#   ./scripts/build-and-push.sh frontend     # only frontend
+#   ./scripts/build-and-push.sh frontend     # only frontend (nginx + angular)
 #   ./scripts/build-and-push.sh e2e          # only e2e runner
 #
 set -euo pipefail
@@ -51,7 +51,10 @@ for target in "${TARGETS[@]}"; do
       build_and_push "restaurant-backend" "${ROOT_DIR}/Dockerfile" "${ROOT_DIR}"
       ;;
     frontend)
-      build_and_push "restaurant-frontend" "${ROOT_DIR}/front/Dockerfile" "${ROOT_DIR}/front"
+      # Angular SPA tier
+      build_and_push "restaurant-angular" "${ROOT_DIR}/front/Dockerfile.angular" "${ROOT_DIR}/front"
+      # Nginx reverse-proxy tier (entry point, keeps the frontend name)
+      build_and_push "restaurant-frontend" "${ROOT_DIR}/front/Dockerfile.nginx" "${ROOT_DIR}/front"
       ;;
     e2e)
       build_and_push "restaurant-e2e" "${ROOT_DIR}/front/Dockerfile.e2e" "${ROOT_DIR}/front"

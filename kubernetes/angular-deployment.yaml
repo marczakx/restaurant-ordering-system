@@ -1,0 +1,26 @@
+# Angular SPA tier.
+#
+# Serves the static Angular bundle on port 4200 using `serve -s`.
+# Not exposed outside the cluster – all traffic enters through the
+# Nginx reverse proxy (frontend service), which forwards / here.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: restaurant-angular
+  namespace: restaurant
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: restaurant-angular
+  template:
+    metadata:
+      labels:
+        app: restaurant-angular
+    spec:
+      containers:
+      - name: angular
+        image: marczakx/restaurant-angular:1.0.2
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 4200

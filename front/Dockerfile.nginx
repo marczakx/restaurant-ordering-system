@@ -1,0 +1,10 @@
+# Nginx reverse-proxy image.
+#
+# Pure edge/proxy tier: serves nothing itself. It forwards SPA traffic to the
+# Angular image (angular:4200) and proxies /api, /ws, /oauth2 to the backend
+# and /keycloak to Keycloak (see nginx.conf).
+#
+FROM nginx:alpine
+COPY nginx.conf /etc/nginx/nginx.conf
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]

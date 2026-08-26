@@ -58,8 +58,14 @@ Kubernetes manifests reference the pinned version tag.
 
 Images built from this repository:
 - `marczakx/restaurant-backend` (root `Dockerfile`)
-- `marczakx/restaurant-frontend` (`front/Dockerfile`)
+- `marczakx/restaurant-angular` (`front/Dockerfile.angular`, Angular SPA served on port 4200)
+- `marczakx/restaurant-frontend` (`front/Dockerfile.nginx`, Nginx reverse proxy – the entry point)
 - `marczakx/restaurant-e2e` (`front/Dockerfile.e2e`, Cypress runner)
+
+The frontend is split into two tiers: the **Angular** image builds the SPA and
+serves the static bundle internally, while the **Nginx** image is a pure
+reverse proxy that forwards `/` to Angular and proxies `/api`, `/ws`,
+`/oauth2` to the backend and `/keycloak` to Keycloak.
 
 Build and push (all images or a single target):
 ```sh
@@ -160,8 +166,8 @@ are pushed to clients in real time over **WebSocket (STOMP)**.
 
 | Layer          | Technology         | Key components                                                                                     |
 |----------------|--------------------|----------------------------------------------------------------------------------------------------|
-| Client         | Angular SPA        | Login, Menu, Orders components                                                                     |
-| Edge / proxy   | Nginx              | Routes `/api/*`, `/ws`, `/keycloak/*`                                                              |
+| Client         | Angular SPA (own container) | Login, Menu, Orders components, served on port 4200                                       |
+| Edge / proxy   | Nginx (own container) | Routes `/` → Angular, `/api/*`, `/ws`, `/keycloak/*` → backend/Keycloak                       |
 | Authentication | Keycloak           | Realm `restaurant`, client `restaurant-client`                                                     |
 | Presentation   | Spring MVC         | `MenuController` (`/api/menu`), `OrderController` (`/api/order`)                                   |
 | Real-time      | STOMP over WebSocket | Endpoint `/ws`, topic `/order`                                                                   |

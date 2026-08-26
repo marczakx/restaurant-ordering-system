@@ -1,3 +1,9 @@
+# Nginx reverse-proxy tier (the frontend entry point).
+#
+# Pure proxy: forwards / to the Angular SPA service and proxies
+# /api, /ws, /oauth2 to the backend and /keycloak to Keycloak.
+# Keeps the "frontend" name/port contract used by the ingress,
+# E2E job and LoadBalancer.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
