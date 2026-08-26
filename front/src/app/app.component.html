@@ -1,0 +1,18 @@
+<nav class="navbar">
+  <div class="nav-container">
+    <a routerLink="/" class="logo">Restaurant Ordering</a>
+    <div class="nav-links">
+      <a routerLink="/menu" routerLinkActive="active">Menu</a>
+      <a routerLink="/orders" routerLinkActive="active">Orders</a>
+      <ng-container *ngIf="authService.isLoggedIn(); else loginBtn">
+        <a (click)="logout()" class="logout-btn">Logout</a>
+      </ng-container>
+      <ng-template #loginBtn>
+        <a routerLink="/login" routerLinkActive="active">Login</a>
+      </ng-template>
+    </div>
+  </div>
+</nav>
+<main class="main-content">
+  <router-outlet></router-outlet>
+</main>
