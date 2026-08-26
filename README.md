@@ -175,6 +175,14 @@ The service mounts the `front/` source tree, installs dependencies and runs
 `ng test` with headless Chrome (`front/karma-ci.conf.js` adds a
 `--no-sandbox` launcher variant required inside containers).
 
+For continuous testing while editing sources there is also a watch-mode
+variant - it re-runs affected specs on every file change; run it
+interactively so Ctrl+C stops it cleanly:
+
+```sh
+docker compose run --rm frontend-unit-tests-watch
+```
+
 ### Recent Changes
 - Fixed integration-tests container to use Maven JDK image
 - Added Docker socket mounting for Testcontainers

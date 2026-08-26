@@ -91,6 +91,20 @@ services:
       - CHROME_BIN=/usr/bin/google-chrome
     command: sh -c "npm install --legacy-peer-deps && npx ng test --watch=false --karma-config=karma-ci.conf.js --browsers=ChromeHeadlessNoSandbox"
 
+
+  # Same suite in Karma watch mode: re-runs affected tests on every file
+  # change. Run interactively so Ctrl+C stops it cleanly:
+  #   docker compose run --rm frontend-unit-tests-watch
+  frontend-unit-tests-watch:
+    image: cypress/browsers:latest
+    working_dir: /e2e
+    volumes:
+      - ./front:/e2e
+    environment:
+      - CHROME_BIN=/usr/bin/google-chrome
+    tty: true
+    stdin_open: true
+    command: sh -c "npm install --legacy-peer-deps && npx ng test --karma-config=karma-ci.conf.js --browsers=ChromeHeadlessNoSandbox"
   e2e-tests:
     image: cypress/browsers:latest
     working_dir: /e2e
