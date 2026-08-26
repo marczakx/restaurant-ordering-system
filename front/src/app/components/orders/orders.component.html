@@ -1,0 +1,308 @@
+<div class="orders-container">
+  <h1>Orders</h1>
+
+  <div class="view-toggle" *ngIf="orders.length > 0">
+    <button
+      class="view-btn"
+      [class.active]="viewMode === 'cards'"
+      (click)="setViewMode('cards')"
+      title="Card view">
+      ⊞
+    </button>
+    <button
+      class="view-btn"
+      [class.active]="viewMode === 'list'"
+      (click)="setViewMode('list')"
+      title="List view">
+      ☰
+    </button>
+    <button
+      class="view-btn"
+      [class.active]="viewMode === 'classic'"
+      (click)="setViewMode('classic')"
+      title="Classic list view">
+      ☰☰
+    </button>
+    <button
+      class="view-btn"
+      [class.active]="viewMode === 'table'"
+      (click)="setViewMode('table')"
+      title="Table view">
+      ▦
+    </button>
+    <button
+      class="view-btn"
+      [class.active]="viewMode === 'board'"
+      (click)="setViewMode('board')"
+      title="Kanban board view">
+      ◫
+    </button>
+    <button
+      class="view-btn"
+      [class.active]="viewMode === 'compact'"
+      (click)="setViewMode('compact')"
+      title="Compact view">
+      ≡
+    </button>
+  </div>
+
+  <div class="orders-list" [class.list-view]="viewMode === 'list'" [class.classic-view]="viewMode === 'classic'" *ngIf="orders.length > 0">
+    <!-- Card View -->
+    <ng-container *ngIf="viewMode === 'cards'">
+      <div class="order-card" *ngFor="let order of orders">
+        <div class="order-header">
+          <h3>Order #{{ order.id }}</h3>
+          <div class="order-status-display">
+            <span class="status-badge" [ngClass]="getStatusClass(order.status)">
+              {{ getStatusLabel(order.status) }}
+            </span>
+          </div>
+          <div class="status-buttons">
+            <button class="status-btn status-todo" [class.active]="order.status === 'TO_DO'" (click)="updateStatus(order, 'TO_DO')">Do realizacji</button>
+            <button class="status-btn status-progress" [class.active]="order.status === 'IN_PROGRESS'" (click)="updateStatus(order, 'IN_PROGRESS')">W trakcie</button>
+            <button class="status-btn status-done" [class.active]="order.status === 'DONE'" (click)="updateStatus(order, 'DONE')">Gotowe</button>
+          </div>
+        </div>
+        <p class="customer">Customer: {{ order.customer }}</p>
+        <div class="order-items">
+          <div class="order-item" *ngFor="let item of order.orderItems">
+            <div class="order-item-info">
+              <span>{{ item.menuItem.name }}</span>
+              <div class="item-controls">
+                <button class="qty-btn" (click)="decreaseQuantity(order, item)" title="Decrease quantity">−</button>
+                <span class="quantity">{{ item.quantity }}</span>
+                <button class="qty-btn" (click)="increaseQuantity(order, item)" title="Increase quantity">+</button>
+                <button class="remove-btn" (click)="removeItem(order, item)" title="Remove item">✕</button>
+              </div>
+            </div>
+            <span>{{ item.price * item.quantity | currency }}</span>
+          </div>
+        </div>
+        <div class="order-total">
+          <strong>Total: {{ getOrderTotal(order) | currency }}</strong>
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- List View -->
+    <ng-container *ngIf="viewMode === 'list'">
+      <div class="order-list-item" *ngFor="let order of orders">
+        <div class="order-list-content">
+          <div class="order-list-info">
+            <div class="order-header">
+              <h3>Order #{{ order.id }}</h3>
+              <div class="order-status-display">
+                <span class="status-badge" [ngClass]="getStatusClass(order.status)">
+                  {{ getStatusLabel(order.status) }}
+                </span>
+              </div>
+              <div class="status-buttons">
+                <button class="status-btn status-todo" [class.active]="order.status === 'TO_DO'" (click)="updateStatus(order, 'TO_DO')">Do realizacji</button>
+                <button class="status-btn status-progress" [class.active]="order.status === 'IN_PROGRESS'" (click)="updateStatus(order, 'IN_PROGRESS')">W trakcie</button>
+                <button class="status-btn status-done" [class.active]="order.status === 'DONE'" (click)="updateStatus(order, 'DONE')">Gotowe</button>
+              </div>
+            </div>
+            <p class="customer">Customer: {{ order.customer }}</p>
+            <div class="order-items">
+              <div class="order-item" *ngFor="let item of order.orderItems">
+                <div class="order-item-info">
+                  <span>{{ item.menuItem.name }}</span>
+                  <div class="item-controls">
+                    <button class="qty-btn" (click)="decreaseQuantity(order, item)" title="Decrease quantity">−</button>
+                    <span class="quantity">{{ item.quantity }}</span>
+                    <button class="qty-btn" (click)="increaseQuantity(order, item)" title="Increase quantity">+</button>
+                    <button class="remove-btn" (click)="removeItem(order, item)" title="Remove item">✕</button>
+                  </div>
+                </div>
+                <span>{{ item.price * item.quantity | currency }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="order-list-actions">
+            <div class="order-total">
+              <strong>Total: {{ getOrderTotal(order) | currency }}</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- Classic List View -->
+    <ng-container *ngIf="viewMode === 'classic'">
+      <div class="order-classic-item" *ngFor="let order of orders">
+        <div class="order-classic-header">
+          <div class="order-header">
+            <h3>Order #{{ order.id }}</h3>
+            <div class="order-status-display">
+              <span class="status-badge" [ngClass]="getStatusClass(order.status)">
+                {{ getStatusLabel(order.status) }}
+              </span>
+            </div>
+            <div class="status-buttons">
+              <button class="status-btn status-todo" [class.active]="order.status === 'TO_DO'" (click)="updateStatus(order, 'TO_DO')">Do realizacji</button>
+              <button class="status-btn status-progress" [class.active]="order.status === 'IN_PROGRESS'" (click)="updateStatus(order, 'IN_PROGRESS')">W trakcie</button>
+              <button class="status-btn status-done" [class.active]="order.status === 'DONE'" (click)="updateStatus(order, 'DONE')">Gotowe</button>
+            </div>
+          </div>
+          <p class="customer">Customer: {{ order.customer }}</p>
+        </div>
+        <div class="order-items">
+          <div class="order-item" *ngFor="let item of order.orderItems">
+            <div class="order-item-info">
+              <span>{{ item.menuItem.name }}</span>
+              <div class="item-controls">
+                <button class="qty-btn" (click)="decreaseQuantity(order, item)" title="Decrease quantity">−</button>
+                <span class="quantity">{{ item.quantity }}</span>
+                <button class="qty-btn" (click)="increaseQuantity(order, item)" title="Increase quantity">+</button>
+                <button class="remove-btn" (click)="removeItem(order, item)" title="Remove item">✕</button>
+              </div>
+            </div>
+            <span>{{ item.price * item.quantity | currency }}</span>
+          </div>
+        </div>
+        <div class="order-total">
+          <strong>Total: {{ getOrderTotal(order) | currency }}</strong>
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- Table View -->
+    <ng-container *ngIf="viewMode === 'table'">
+      <div class="orders-table-wrapper">
+        <table class="orders-table">
+          <thead>
+            <tr>
+              <th>Zamówienie</th>
+              <th>Klient</th>
+              <th>Pozycje</th>
+              <th>Suma</th>
+              <th>Status</th>
+              <th>Zmień status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <ng-container *ngFor="let order of orders">
+              <tr class="orders-table-row" (click)="toggleExpanded(order.id)">
+                <td>#{{ order.id }}</td>
+                <td>{{ order.customer }}</td>
+                <td>{{ getItemCount(order) }}</td>
+                <td>{{ getOrderTotal(order) | currency }}</td>
+                <td>
+                  <span class="status-badge" [ngClass]="getStatusClass(order.status)">
+                    {{ getStatusLabel(order.status) }}
+                  </span>
+                </td>
+                <td (click)="$event.stopPropagation()">
+                  <div class="status-buttons">
+                    <button class="status-btn status-todo" [class.active]="order.status === 'TO_DO'" (click)="updateStatus(order, 'TO_DO')">Do realizacji</button>
+                    <button class="status-btn status-progress" [class.active]="order.status === 'IN_PROGRESS'" (click)="updateStatus(order, 'IN_PROGRESS')">W trakcie</button>
+                    <button class="status-btn status-done" [class.active]="order.status === 'DONE'" (click)="updateStatus(order, 'DONE')">Gotowe</button>
+                  </div>
+                </td>
+              </tr>
+              <tr class="orders-table-details" *ngIf="expandedOrderId === order.id">
+                <td colspan="6">
+                  <div class="order-item" *ngFor="let item of order.orderItems">
+                    <div class="order-item-info">
+                      <span>{{ item.menuItem.name }}</span>
+                      <div class="item-controls">
+                        <button class="qty-btn" (click)="decreaseQuantity(order, item)" title="Decrease quantity">−</button>
+                        <span class="quantity">{{ item.quantity }}</span>
+                        <button class="qty-btn" (click)="increaseQuantity(order, item)" title="Increase quantity">+</button>
+                        <button class="remove-btn" (click)="removeItem(order, item)" title="Remove item">✕</button>
+                      </div>
+                    </div>
+                    <span>{{ item.price * item.quantity | currency }}</span>
+                  </div>
+                </td>
+              </tr>
+            </ng-container>
+          </tbody>
+        </table>
+      </div>
+    </ng-container>
+
+    <!-- Board View -->
+    <ng-container *ngIf="viewMode === 'board'">
+      <div class="board">
+        <p class="board-hint">Przeciągnij kartę do innej kolumny, aby zmienić status zamówienia</p>
+        <div class="board-column" *ngFor="let column of boardColumns">
+          <div class="board-column-header" [ngClass]="column.headerClass">
+            <span>{{ column.label }}</span>
+            <span class="board-column-count">{{ getOrdersByStatus(column.status).length }}</span>
+          </div>
+          <div class="board-cards"
+               [class.drop-target]="dragOverStatus === column.status && draggingOrderId !== null"
+               (dragover)="onDragOver($event, column.status)"
+               (dragleave)="onDragLeave($event, column.status)"
+               (drop)="onDrop($event, column.status)">
+            <div class="board-card"
+                 *ngFor="let order of getOrdersByStatus(column.status)"
+                 [draggable]="true"
+                 [class.dragging]="draggingOrderId === order.id"
+                 (dragstart)="onDragStart(order, $event)"
+                 (dragend)="onDragEnd()">
+              <div class="board-card-header">
+                <span class="board-order-id">#{{ order.id }}</span>
+                <strong>{{ getOrderTotal(order) | currency }}</strong>
+              </div>
+              <p class="board-customer">{{ order.customer }}</p>
+              <ul class="board-items">
+                <li *ngFor="let item of order.orderItems">{{ item.quantity }}× {{ item.menuItem.name }}</li>
+              </ul>
+              <div class="status-buttons">
+                <button class="status-btn status-todo" [class.active]="order.status === 'TO_DO'" (click)="updateStatus(order, 'TO_DO')">Do realizacji</button>
+                <button class="status-btn status-progress" [class.active]="order.status === 'IN_PROGRESS'" (click)="updateStatus(order, 'IN_PROGRESS')">W trakcie</button>
+                <button class="status-btn status-done" [class.active]="order.status === 'DONE'" (click)="updateStatus(order, 'DONE')">Gotowe</button>
+              </div>
+            </div>
+            <p class="board-empty" *ngIf="getOrdersByStatus(column.status).length === 0">Brak zamówień</p>
+          </div>
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- Compact View -->
+    <ng-container *ngIf="viewMode === 'compact'">
+      <div class="compact-list">
+        <div class="compact-row" *ngFor="let order of orders">
+          <div class="compact-summary" (click)="toggleExpanded(order.id)">
+            <span class="compact-id">#{{ order.id }}</span>
+            <span class="compact-customer">{{ order.customer }}</span>
+            <span class="compact-count">{{ getItemCount(order) }} poz.</span>
+            <span class="compact-total">{{ getOrderTotal(order) | currency }}</span>
+            <span class="status-badge" [ngClass]="getStatusClass(order.status)">
+              {{ getStatusLabel(order.status) }}
+            </span>
+            <span class="compact-chevron">{{ expandedOrderId === order.id ? '▲' : '▼' }}</span>
+          </div>
+          <div class="compact-details" *ngIf="expandedOrderId === order.id">
+            <div class="order-item" *ngFor="let item of order.orderItems">
+              <div class="order-item-info">
+                <span>{{ item.menuItem.name }}</span>
+                <div class="item-controls">
+                  <button class="qty-btn" (click)="decreaseQuantity(order, item)" title="Decrease quantity">−</button>
+                  <span class="quantity">{{ item.quantity }}</span>
+                  <button class="qty-btn" (click)="increaseQuantity(order, item)" title="Increase quantity">+</button>
+                  <button class="remove-btn" (click)="removeItem(order, item)" title="Remove item">✕</button>
+                </div>
+              </div>
+              <span>{{ item.price * item.quantity | currency }}</span>
+            </div>
+            <div class="compact-details-actions">
+              <div class="status-buttons">
+                <button class="status-btn status-todo" [class.active]="order.status === 'TO_DO'" (click)="updateStatus(order, 'TO_DO')">Do realizacji</button>
+                <button class="status-btn status-progress" [class.active]="order.status === 'IN_PROGRESS'" (click)="updateStatus(order, 'IN_PROGRESS')">W trakcie</button>
+                <button class="status-btn status-done" [class.active]="order.status === 'DONE'" (click)="updateStatus(order, 'DONE')">Gotowe</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </ng-container>
+  </div>
+
+  <div class="no-orders" *ngIf="orders.length === 0">
+    <p>No orders yet. Place an order from the menu!</p>
+  </div>
+</div>

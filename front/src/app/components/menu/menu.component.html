@@ -1,0 +1,116 @@
+<div class="menu-container">
+  <h1>Menu</h1>
+
+  <div class="filters">
+    <select [(ngModel)]="selectedType" (change)="onTypeChange()">
+      <option value="">All Types</option>
+      <option *ngFor="let type of menuTypes" [value]="type.name">{{ type.name }}</option>
+    </select>
+
+    <select [(ngModel)]="selectedCuisine" (change)="onCuisineChange()">
+      <option value="">All Cuisines</option>
+      <option *ngFor="let cuisine of cuisines" [value]="cuisine.id">{{ cuisine.name }}</option>
+    </select>
+
+    <div class="view-toggle">
+      <button
+        class="view-btn"
+        [class.active]="viewMode === 'cards'"
+        (click)="setViewMode('cards')"
+        title="Card view">
+        ⊞
+      </button>
+      <button
+        class="view-btn"
+        [class.active]="viewMode === 'list'"
+        (click)="setViewMode('list')"
+        title="List view">
+        ☰
+      </button>
+      <button
+        class="view-btn"
+        [class.active]="viewMode === 'classic'"
+        (click)="setViewMode('classic')"
+        title="Classic list view">
+        ☰☰
+      </button>
+    </div>
+  </div>
+
+  <div class="order-summary" *ngIf="orderItems.length > 0">
+    <h2>Your Order</h2>
+    <div class="status-buttons">
+      <button class="status-btn status-todo" [class.active]="orderStatus === 'TO_DO'" (click)="setStatus('TO_DO')">To Do</button>
+      <button class="status-btn status-progress" [class.active]="orderStatus === 'IN_PROGRESS'" (click)="setStatus('IN_PROGRESS')">In Progress</button>
+      <button class="status-btn status-done" [class.active]="orderStatus === 'DONE'" (click)="setStatus('DONE')">Done</button>
+    </div>
+    <div class="order-item" *ngFor="let orderItem of orderItems; let i = index">
+      <span>{{ orderItem.menuItem.name }} x {{ orderItem.quantity }}</span>
+      <span>{{ orderItem.price * orderItem.quantity | currency }}</span>
+      <button (click)="removeFromOrder(i)">Remove</button>
+    </div>
+    <div class="total">
+      <strong>Total: {{ getTotal() | currency }}</strong>
+    </div>
+    <div class="customer-form">
+      <input [(ngModel)]="customerName" placeholder="Your name" />
+      <button (click)="submitOrder()">Place Order</button>
+    </div>
+  </div>
+
+  <div class="menu-items" [class.list-view]="viewMode === 'list'" [class.classic-view]="viewMode === 'classic'" *ngIf="menuItems.length > 0">
+    <!-- Card View -->
+    <ng-container *ngIf="viewMode === 'cards'">
+      <div class="menu-item card-view" *ngFor="let item of menuItems">
+        <h3>{{ item.name }}</h3>
+        <p class="price">{{ item.price | currency }}</p>
+        <p class="type">{{ item.menuItemTypeName }}</p>
+        <div class="additions" *ngIf="item.additions && item.additions.length > 0">
+          <strong>Additions:</strong>
+          <span *ngFor="let add of item.additions">{{ add.name }} (+{{ add.price | currency }})</span>
+        </div>
+        <button (click)="addToOrder(item)">Add to Order</button>
+      </div>
+    </ng-container>
+
+    <!-- List View -->
+    <ng-container *ngIf="viewMode === 'list'">
+      <div class="menu-item list-view" *ngFor="let item of menuItems">
+        <div class="list-item-content">
+          <div class="list-item-info">
+            <h3>{{ item.name }}</h3>
+            <p class="type">{{ item.menuItemTypeName }}</p>
+            <div class="additions" *ngIf="item.additions && item.additions.length > 0">
+              <strong>Additions:</strong>
+              <span *ngFor="let add of item.additions">{{ add.name }} (+{{ add.price | currency }})</span>
+            </div>
+          </div>
+          <div class="list-item-actions">
+            <p class="price">{{ item.price | currency }}</p>
+            <button (click)="addToOrder(item)">Add to Order</button>
+          </div>
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- Classic List View -->
+    <ng-container *ngIf="viewMode === 'classic'">
+      <div class="menu-item classic-view" *ngFor="let item of menuItems">
+        <div class="classic-item-content">
+          <div class="classic-item-info">
+            <h3>{{ item.name }}</h3>
+            <p class="type">{{ item.menuItemTypeName }}</p>
+            <div class="additions" *ngIf="item.additions && item.additions.length > 0">
+              <strong>Additions:</strong>
+              <span *ngFor="let add of item.additions">{{ add.name }} (+{{ add.price | currency }})</span>
+            </div>
+          </div>
+          <div class="classic-item-actions">
+            <p class="price">{{ item.price | currency }}</p>
+            <button (click)="addToOrder(item)">Add to Order</button>
+          </div>
+        </div>
+      </div>
+    </ng-container>
+  </div>
+</div>
