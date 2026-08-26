@@ -31,4 +31,9 @@ export class LoginComponent {
       }
     });
   }
+
+  loginWithGoogle(): void {
+    // Redirect to Google OAuth2 flow
+    window.location.href = '/api/auth/google';
+  }
 }

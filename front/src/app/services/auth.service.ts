@@ -37,6 +37,15 @@ export class AuthService {
     );
   }
 
+  loginWithGoogle(): Observable<any> {
+    // This will be handled by the backend OAuth2 flow
+    // For now we'll redirect to the Google OAuth endpoint
+    window.location.href = '/api/auth/google';
+    // In a real implementation, this would return an observable that handles the redirect
+    // For now, we're just redirecting directly
+    return new Observable();
+  }
+
   cleanToken(): void {
     this.token = null;
     localStorage.removeItem(this.TOKEN_KEY);
