@@ -38,9 +38,21 @@ echo "==> Applying E2E job in namespace '${NAMESPACE}'"
 kubectl delete job e2e-tests -n "${NAMESPACE}" --ignore-not-found=true
 kubectl apply -f "${ROOT_DIR}/kubernetes/e2e-tests-job.yaml" -n "${NAMESPACE}"
 
-# Allow overriding the image and target URL without editing the manifest
-kubectl set image "job/e2e-tests" "cypress=${IMAGE}" -n "${NAMESPACE}"
-kubectl set env "job/e2e-tests" "CYPRESS_BASE_URL=${BASE_URL}" -n "${NAMESPACE}"
+# Job pod templates are immutable, so the image and target URL cannot be patched
+# after creation. Verify that the freshly created job matches the requested
+# values instead of attempting an impossible in-place update.
+JOB_IMAGE="$(kubectl get job e2e-tests -n "${NAMESPACE}" -o jsonpath='{.spec.template.spec.containers[?(@.name=="cypress")].image}')"
+if [ "${JOB_IMAGE}" != "${IMAGE}" ]; then
+  echo "ERROR: job image (${JOB_IMAGE}) differs from requested image (${IMAGE})." >&2
+  echo "       Update kubernetes/e2e-tests-job.yaml or align E2E_IMAGE with the manifest." >&2
+  exit 1
+fi
+
+JOB_URL="$(kubectl get job e2e-tests -n "${NAMESPACE}" -o jsonpath='{.spec.template.spec.containers[?(@.name=="cypress")].env[?(@.name=="CYPRESS_BASE_URL")].value}')"
+if [ "${JOB_URL}" != "${BASE_URL}" ]; then
+  echo "WARNING: CYPRESS_BASE_URL=${BASE_URL} requested but the job uses ${JOB_URL}." >&2
+  echo "         Job pod templates are immutable - update kubernetes/e2e-tests-job.yaml." >&2
+fi
 
 echo "==> Waiting for the job to finish (this can take a few minutes)..."
 if ! kubectl wait --for=condition=complete --timeout=15m job/e2e-tests -n "${NAMESPACE}"; then
