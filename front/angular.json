@@ -98,6 +98,7 @@
     }
   },
   "cli": {
-    "defaultCollection": "@angular/material"
+    "defaultCollection": "@angular/material",
+    "analytics": false
   }
 }
