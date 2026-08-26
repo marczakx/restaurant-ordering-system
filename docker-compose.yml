@@ -41,8 +41,13 @@ services:
       - SPRING_DATASOURCE_USERNAME=restaurant
       - SPRING_DATASOURCE_PASSWORD=restaurant
       - SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=org.hibernate.dialect.PostgreSQLDialect
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-placeholder-google-client-id}
-      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-placeholder-google-client-secret}
+    env_file:
+      # Google OAuth credentials are kept OUTSIDE this repository.
+      # Create ~/.config/restaurant/secrets.env with GOOGLE_CLIENT_ID /
+      # GOOGLE_CLIENT_SECRET (see README). Optional: without it the backend
+      # starts with placeholder credentials from application.properties.
+      - path: ~/.config/restaurant/secrets.env
+        required: false
     depends_on:
       - db
     networks:

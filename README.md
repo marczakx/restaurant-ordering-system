@@ -31,9 +31,45 @@ docker run --rm -p 8081:8080 restaurant-backend:latest
 ```
 
 ### Docker Compose
-To run the full application stack (database, backend, auth-service, and frontend) using Docker Compose:
+
+#### Google OAuth secrets (kept out of the repository)
+
+The backend reads `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` from environment
+variables (`application.properties` falls back to placeholders when they are
+absent). **They are not stored anywhere in this project** – Docker Compose loads
+them from a private file outside the repository:
+
+1. Create `~/.config/restaurant/secrets.env` (outside the repo, never committed):
+   ```sh
+   mkdir -p ~/.config/restaurant
+   cat > ~/.config/restaurant/secrets.env << 'EOF'
+   GOOGLE_CLIENT_ID=your-real-google-client-id
+   GOOGLE_CLIENT_SECRET=your-real-google-client-secret
+   EOF
+   chmod 600 ~/.config/restaurant/secrets.env
+   ```
+   Credentials come from [Google Cloud Console → APIs & Services → Credentials](https://console.cloud.google.com/apis/credentials)
+   (authorized redirect URI: `http://localhost:8082/login/oauth2/code/google`).
+
+2. `docker-compose.yml` references it via an **optional** `env_file`, so the
+   stack also starts without the file (backend then uses placeholder values).
+
+Alternative: export the variables in your shell before running Compose –
+`export GOOGLE_CLIENT_ID=... GOOGLE_CLIENT_SECRET=...` – or use any secret
+manager; nothing in the repo needs to change.
+
+#### Running the stack
+
+Start the full application stack (database, Keycloak, backend, and frontend):
 ```sh
-docker-compose up --build
+docker compose up --build -d
+```
+
+Useful variants:
+```sh
+docker compose up backend frontend      # backend + frontend (+ db, keycloak deps)
+docker compose up -d                    # detached, all services
+docker compose logs -f backend          # follow backend logs
 ```
 
 This will start:
@@ -47,7 +83,7 @@ Authentication is delegated to the **auth-service**. The frontend Nginx proxies 
 
 To stop all services:
 ```sh
-docker-compose down
+docker compose down
 ```
 
 ### Image Versioning
