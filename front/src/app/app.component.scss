@@ -30,6 +30,12 @@
 .nav-links a:hover, .nav-links a.active {
   background: rgba(255,255,255,0.2);
 }
+.user-info {
+  margin-left: 2rem;
+  padding: 0.5rem 1rem;
+  font-weight: 500;
+  opacity: 0.9;
+}
 .logout-btn {
   background: rgba(255,255,255,0.1);
 }

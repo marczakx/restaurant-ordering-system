@@ -20,8 +20,10 @@ export class AuthService {
 
   private readonly TOKEN_KEY = 'auth_token';
   private readonly OAUTH_SESSION_KEY = 'oauth_session';
+  private readonly USERNAME_KEY = 'auth_username';
   private token: string | null = null;
   private oauthSession = false;
+  private username: string | null = null;
   // Relative URL - Keycloak is proxied by the frontend nginx under /keycloak/,
   // so the same built bundle works in Docker Compose and Kubernetes.
   private readonly KEYCLOAK_URL = '/keycloak';
@@ -31,6 +33,7 @@ export class AuthService {
   constructor(private http: HttpClient) {
     this.token = localStorage.getItem(this.TOKEN_KEY);
     this.oauthSession = localStorage.getItem(this.OAUTH_SESSION_KEY) === 'true';
+    this.username = localStorage.getItem(this.USERNAME_KEY);
   }
 
   login(username: string, password: string): Observable<any> {
@@ -59,6 +62,7 @@ export class AuthService {
         if (status.authenticated) {
           this.oauthSession = true;
           localStorage.setItem(this.OAUTH_SESSION_KEY, 'true');
+          this.setUsername(status.username ?? null);
         }
         return status.authenticated;
       })
@@ -68,13 +72,41 @@ export class AuthService {
   cleanToken(): void {
     this.token = null;
     this.oauthSession = false;
+    this.username = null;
     localStorage.removeItem(this.TOKEN_KEY);
     localStorage.removeItem(this.OAUTH_SESSION_KEY);
+    localStorage.removeItem(this.USERNAME_KEY);
   }
 
   saveToken(token: string): void {
     this.token = token;
     localStorage.setItem(this.TOKEN_KEY, token);
+    // Extract the human-readable name from the Keycloak JWT so the UI can
+    // show who is logged in for both login methods (password + Google).
+    this.setUsername(this.readPreferredUsername(token));
+  }
+
+  getUsername(): string | null {
+    return this.username;
+  }
+
+  private setUsername(username: string | null): void {
+    this.username = username;
+    if (username) {
+      localStorage.setItem(this.USERNAME_KEY, username);
+    } else {
+      localStorage.removeItem(this.USERNAME_KEY);
+    }
+  }
+
+  /** Decodes the JWT payload and returns the "preferred_username" claim. */
+  private readPreferredUsername(jwt: string): string | null {
+    try {
+      const payload = JSON.parse(atob(jwt.split('.')[1]));
+      return typeof payload.preferred_username === 'string' ? payload.preferred_username : null;
+    } catch {
+      return null;
+    }
   }
 
   getToken(): string | null {

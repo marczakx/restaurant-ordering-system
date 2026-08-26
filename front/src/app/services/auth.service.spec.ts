@@ -38,6 +38,16 @@ describe('AuthService', () => {
     expect(localStorage.getItem('oauth_session')).toBe('true');
   });
 
+  it('should remember the username reported by the backend after OAuth2 login', () => {
+    service.completeOAuth2Login().subscribe();
+
+    const req = httpMock.expectOne('/api/auth/status');
+    req.flush({ authenticated: true, username: 'google-user' });
+
+    expect(service.getUsername()).toBe('google-user');
+    expect(localStorage.getItem('auth_username')).toBe('google-user');
+  });
+
   it('should stay logged out when the backend session is not authenticated', () => {
     let result: boolean | undefined;
     service.completeOAuth2Login().subscribe((authenticated) => (result = authenticated));
@@ -56,6 +66,40 @@ describe('AuthService', () => {
     expect(restored.isLoggedIn()).toBeTrue();
   });
 
+  it('should restore the username from localStorage', () => {
+    localStorage.setItem('oauth_session', 'true');
+    localStorage.setItem('auth_username', 'google-user');
+    const restored = new AuthService(TestBed.inject(HttpClient));
+    expect(restored.getUsername()).toBe('google-user');
+  });
+
+  it('should extract the username from a Keycloak JWT when saving a token', () => {
+    // header {"alg":"HS256"} / payload {"preferred_username":"john"} / signature
+    const jwt = [
+      btoa(JSON.stringify({ alg: 'HS256' })),
+      btoa(JSON.stringify({ preferred_username: 'john' })),
+      'signature'
+    ].join('.');
+
+    service.saveToken(jwt);
+
+    expect(service.getUsername()).toBe('john');
+    expect(localStorage.getItem('auth_username')).toBe('john');
+  });
+
+  it('should fall back to no username when the token has no preferred_username claim', () => {
+    const jwt = [
+      btoa(JSON.stringify({ alg: 'HS256' })),
+      btoa(JSON.stringify({ sub: '123' })),
+      'signature'
+    ].join('.');
+
+    service.saveToken(jwt);
+
+    expect(service.getUsername()).toBeNull();
+    expect(localStorage.getItem('auth_username')).toBeNull();
+  });
+
   it('should clear both the token and the OAuth2 session on cleanToken', () => {
     localStorage.setItem('oauth_session', 'true');
     const svc = new AuthService(TestBed.inject(HttpClient));
@@ -66,5 +110,17 @@ describe('AuthService', () => {
     expect(svc.isLoggedIn()).toBeFalse();
     expect(localStorage.getItem('oauth_session')).toBeNull();
     expect(localStorage.getItem('auth_token')).toBeNull();
+  });
+
+  it('should clear the username on cleanToken', () => {
+    localStorage.setItem('oauth_session', 'true');
+    localStorage.setItem('auth_username', 'google-user');
+    const svc = new AuthService(TestBed.inject(HttpClient));
+    expect(svc.getUsername()).toBe('google-user');
+
+    svc.cleanToken();
+
+    expect(svc.getUsername()).toBeNull();
+    expect(localStorage.getItem('auth_username')).toBeNull();
   });
 });

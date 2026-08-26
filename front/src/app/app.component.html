@@ -5,6 +5,9 @@
       <a routerLink="/menu" routerLinkActive="active">Menu</a>
       <a routerLink="/orders" routerLinkActive="active">Orders</a>
       <ng-container *ngIf="authService.isLoggedIn(); else loginBtn">
+        <span class="user-info" *ngIf="authService.getUsername() as username" title="Logged in user">
+          👤 {{ username }}
+        </span>
         <a (click)="logout()" class="logout-btn">Logout</a>
       </ng-container>
       <ng-template #loginBtn>
