@@ -2,7 +2,8 @@
 #
 # Build and push all application images to Docker Hub with version tags.
 #
-# Every image is tagged twice: the version from the VERSION file and `latest`.
+# Every image is tagged three times: the version from the VERSION file,
+# the short git commit hash of the current HEAD, and `latest`.
 # Kubernetes manifests reference the pinned version tag.
 #
 # Usage:
@@ -19,15 +20,20 @@ VERSION="$(tr -d '[:space:]' < "$(dirname "${BASH_SOURCE[0]}")/../VERSION")"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 
+# Short git commit hash used as an additional image tag so every push
+# can be traced back to the exact source revision.
+COMMIT="$(git -C "${ROOT_DIR}" rev-parse --short HEAD)"
+
 build_and_push() {
   local name="$1" dockerfile="$2" context="$3"
   local image="${DOCKER_USER}/${name}"
 
-  echo "==> Building ${image}:${VERSION}"
-  docker build -t "${image}:${VERSION}" -t "${image}:latest" -f "${dockerfile}" "${context}"
+  echo "==> Building ${image}:${VERSION} (commit ${COMMIT})"
+  docker build -t "${image}:${VERSION}" -t "${image}:${COMMIT}" -t "${image}:latest" -f "${dockerfile}" "${context}"
 
-  echo "==> Pushing ${image}:${VERSION} and ${image}:latest"
+  echo "==> Pushing ${image}:${VERSION}, ${image}:${COMMIT} and ${image}:latest"
   docker push "${image}:${VERSION}"
+  docker push "${image}:${COMMIT}"
   docker push "${image}:latest"
 }
 
@@ -57,4 +63,4 @@ for target in "${TARGETS[@]}"; do
   esac
 done
 
-echo "==> Done. Version: ${VERSION}"
+echo "==> Done. Version: ${VERSION}, commit: ${COMMIT}"
