@@ -43,5 +43,8 @@ front/cypress/downloads/
 front/cypress/screenshots/
 front/cypress/videos/
 
+### Secrets ###
+secrets.env
+
 ### Other ###
 dockermvnidoc/
