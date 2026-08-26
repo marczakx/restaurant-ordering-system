@@ -26,7 +26,13 @@ public class SecurityConfig {
             // GET /oauth2/authorization/google starts the Google login and
             // GET /login/oauth2/code/google handles the callback.
             .oauth2Login(oauth2 -> oauth2
-                .defaultSuccessUrl("/menu", true)
+                // Land on the SPA callback route instead of a protected route:
+                // the callback asks /api/auth/status, marks the server-side
+                // session as logged in on the client and only then navigates
+                // to /menu. Redirecting straight to /menu made the Angular
+                // auth guard bounce the user back to the login page, because
+                // the client had no knowledge of the OAuth2 session yet.
+                .defaultSuccessUrl("/login/callback", true)
             );
 
         return http.build();

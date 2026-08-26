@@ -39,6 +39,15 @@ describe('Google Login E2E Tests', () => {
     });
   });
 
+  it('should report the session as unauthenticated without an OAuth2 login', () => {
+    // The SPA callback relies on this endpoint to detect a completed
+    // Google login; without a backend session it must answer false.
+    cy.request('/api/auth/status').then((response) => {
+      expect(response.status).to.eq(200);
+      expect(response.body.authenticated).to.eq(false);
+    });
+  });
+
   it('should land on the Google sign-in page when following the button flow', () => {
     // Follow the exact redirect chain a real browser walks through after
     // clicking the button (Cypress cannot navigate cross-origin itself):

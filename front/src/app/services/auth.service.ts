@@ -1,10 +1,17 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 const httpOptions = {
   headers: new HttpHeaders({'Content-Type': 'application/json'})
 };
+
+/** Shape of the backend response from GET /api/auth/status. */
+interface AuthStatus {
+  authenticated: boolean;
+  username?: string | null;
+}
 
 @Injectable({
   providedIn: 'root'
@@ -12,7 +19,9 @@ const httpOptions = {
 export class AuthService {
 
   private readonly TOKEN_KEY = 'auth_token';
+  private readonly OAUTH_SESSION_KEY = 'oauth_session';
   private token: string | null = null;
+  private oauthSession = false;
   // Relative URL - Keycloak is proxied by the frontend nginx under /keycloak/,
   // so the same built bundle works in Docker Compose and Kubernetes.
   private readonly KEYCLOAK_URL = '/keycloak';
@@ -21,6 +30,7 @@ export class AuthService {
 
   constructor(private http: HttpClient) {
     this.token = localStorage.getItem(this.TOKEN_KEY);
+    this.oauthSession = localStorage.getItem(this.OAUTH_SESSION_KEY) === 'true';
   }
 
   login(username: string, password: string): Observable<any> {
@@ -37,18 +47,29 @@ export class AuthService {
     );
   }
 
-  loginWithGoogle(): Observable<any> {
-    // This will be handled by the backend OAuth2 flow
-    // For now we'll redirect to the Google OAuth endpoint
-    window.location.href = '/api/auth/google';
-    // In a real implementation, this would return an observable that handles the redirect
-    // For now, we're just redirecting directly
-    return new Observable();
+  /**
+   * Called by the SPA callback route after the backend OAuth2 login
+   * (e.g. Google) redirected the browser back into the app. Asks the
+   * backend whether the server-side session is authenticated and, if so,
+   * remembers it locally so the auth guard grants access.
+   */
+  completeOAuth2Login(): Observable<boolean> {
+    return this.http.get<AuthStatus>('/api/auth/status').pipe(
+      map((status) => {
+        if (status.authenticated) {
+          this.oauthSession = true;
+          localStorage.setItem(this.OAUTH_SESSION_KEY, 'true');
+        }
+        return status.authenticated;
+      })
+    );
   }
 
   cleanToken(): void {
     this.token = null;
+    this.oauthSession = false;
     localStorage.removeItem(this.TOKEN_KEY);
+    localStorage.removeItem(this.OAUTH_SESSION_KEY);
   }
 
   saveToken(token: string): void {
@@ -61,6 +82,6 @@ export class AuthService {
   }
 
   isLoggedIn(): boolean {
-    return this.token !== null;
+    return this.token !== null || this.oauthSession;
   }
 }
