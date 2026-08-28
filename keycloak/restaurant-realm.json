@@ -1,6 +1,18 @@
 {
   "realm": "restaurant",
   "enabled": true,
+  "roles": {
+    "realm": [
+      {
+        "name": "menu-editor",
+        "description": "Can edit existing menu items"
+      },
+      {
+        "name": "menu-creator",
+        "description": "Can add new menu items"
+      }
+    ]
+  },
   "clients": [
     {
       "clientId": "restaurant-client",
@@ -30,7 +42,40 @@
           "value": "demo",
           "temporary": false
         }
-      ]
+      ],
+      "realmRoles": ["menu-editor", "menu-creator"]
+    },
+    {
+      "username": "editor",
+      "enabled": true,
+      "email": "editor@restaurant.local",
+      "emailVerified": true,
+      "firstName": "Menu",
+      "lastName": "Editor",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "editor",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["menu-editor"]
+    },
+    {
+      "username": "creator",
+      "enabled": true,
+      "email": "creator@restaurant.local",
+      "emailVerified": true,
+      "firstName": "Menu",
+      "lastName": "Creator",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "creator",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["menu-creator"]
     }
   ]
 }

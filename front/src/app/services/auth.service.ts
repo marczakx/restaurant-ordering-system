@@ -11,6 +11,7 @@ const httpOptions = {
 interface AuthStatus {
   authenticated: boolean;
   username?: string | null;
+  roles?: string[] | null;
 }
 
 @Injectable({
@@ -21,9 +22,13 @@ export class AuthService {
   private readonly TOKEN_KEY = 'auth_token';
   private readonly OAUTH_SESSION_KEY = 'oauth_session';
   private readonly USERNAME_KEY = 'auth_username';
+  private readonly ROLES_KEY = 'auth_roles';
   private token: string | null = null;
   private oauthSession = false;
   private username: string | null = null;
+  // Realm roles granted to the logged-in user (e.g. "menu-editor",
+  // "menu-creator"). Used by the UI to show/hide menu editing actions.
+  private roles: string[] = [];
   // Relative URL - Keycloak is proxied by the frontend nginx under /keycloak/,
   // so the same built bundle works in Docker Compose and Kubernetes.
   private readonly KEYCLOAK_URL = '/keycloak';
@@ -34,6 +39,7 @@ export class AuthService {
     this.token = localStorage.getItem(this.TOKEN_KEY);
     this.oauthSession = localStorage.getItem(this.OAUTH_SESSION_KEY) === 'true';
     this.username = localStorage.getItem(this.USERNAME_KEY);
+    this.roles = this.readStoredRoles();
   }
 
   login(username: string, password: string): Observable<any> {
@@ -63,6 +69,7 @@ export class AuthService {
           this.oauthSession = true;
           localStorage.setItem(this.OAUTH_SESSION_KEY, 'true');
           this.setUsername(status.username ?? null);
+          this.setRoles(status.roles ?? []);
         }
         return status.authenticated;
       })
@@ -73,9 +80,11 @@ export class AuthService {
     this.token = null;
     this.oauthSession = false;
     this.username = null;
+    this.roles = [];
     localStorage.removeItem(this.TOKEN_KEY);
     localStorage.removeItem(this.OAUTH_SESSION_KEY);
     localStorage.removeItem(this.USERNAME_KEY);
+    localStorage.removeItem(this.ROLES_KEY);
   }
 
   saveToken(token: string): void {
@@ -84,10 +93,23 @@ export class AuthService {
     // Extract the human-readable name from the Keycloak JWT so the UI can
     // show who is logged in for both login methods (password + Google).
     this.setUsername(this.readPreferredUsername(token));
+    // Extract the realm roles from the Keycloak JWT so the UI can gate
+    // menu editing/adding actions by role.
+    this.setRoles(this.readRealmRoles(token));
   }
 
   getUsername(): string | null {
     return this.username;
+  }
+
+  /** All roles granted to the logged-in user (empty when logged out). */
+  getRoles(): string[] {
+    return [...this.roles];
+  }
+
+  /** Whether the logged-in user has been granted the given role. */
+  hasRole(role: string): boolean {
+    return this.roles.includes(role);
   }
 
   private setUsername(username: string | null): void {
@@ -99,6 +121,25 @@ export class AuthService {
     }
   }
 
+  private setRoles(roles: string[]): void {
+    this.roles = roles ?? [];
+    if (this.roles.length > 0) {
+      localStorage.setItem(this.ROLES_KEY, JSON.stringify(this.roles));
+    } else {
+      localStorage.removeItem(this.ROLES_KEY);
+    }
+  }
+
+  private readStoredRoles(): string[] {
+    try {
+      const raw = localStorage.getItem(this.ROLES_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed.filter((r) => typeof r === 'string') : [];
+    } catch {
+      return [];
+    }
+  }
+
   /** Decodes the JWT payload and returns the "preferred_username" claim. */
   private readPreferredUsername(jwt: string): string | null {
     try {
@@ -106,6 +147,20 @@ export class AuthService {
       return typeof payload.preferred_username === 'string' ? payload.preferred_username : null;
     } catch {
       return null;
+    }
+  }
+
+  /**
+   * Decodes the JWT payload and returns the Keycloak realm roles from the
+   * "realm_access.roles" claim (populated by the "roles" client scope).
+   */
+  private readRealmRoles(jwt: string): string[] {
+    try {
+      const payload = JSON.parse(atob(jwt.split('.')[1]));
+      const roles = payload?.realm_access?.roles;
+      return Array.isArray(roles) ? roles.filter((r: unknown) => typeof r === 'string') : [];
+    } catch {
+      return [];
     }
   }
 

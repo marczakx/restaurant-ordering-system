@@ -37,13 +37,13 @@
     </div>
   </div>
 
-  <!-- Add new item button -->
-  <div class="add-item-bar" *ngIf="!addingItem && !editingItem">
+  <!-- Add new item button (requires the menu-creator role) -->
+  <div class="add-item-bar" *ngIf="canAddItems() && !addingItem && !editingItem">
     <button class="add-btn" (click)="startAdding()">+ Add New Item</button>
   </div>
 
-  <!-- Add new item form -->
-  <div class="add-form" *ngIf="addingItem">
+  <!-- Add new item form (requires the menu-creator role) -->
+  <div class="add-form" *ngIf="canAddItems() && addingItem">
     <h2>Add New Menu Item</h2>
     <div class="edit-fields">
       <label>
@@ -77,8 +77,8 @@
     </div>
   </div>
 
-  <!-- Edit form -->
-  <div class="edit-form" *ngIf="editingItem">
+  <!-- Edit form (requires the menu-editor role) -->
+  <div class="edit-form" *ngIf="canEditItems() && editingItem">
     <h2>Edit: {{ editingItem.name }}</h2>
     <div class="edit-fields">
       <label>
@@ -146,7 +146,7 @@
         </div>
         <div class="item-actions">
           <button (click)="addToOrder(item)">Add to Order</button>
-          <button class="edit-btn" (click)="startEditing(item)">Edit</button>
+          <button class="edit-btn" *ngIf="canEditItems()" (click)="startEditing(item)">Edit</button>
         </div>
       </div>
     </ng-container>
@@ -167,7 +167,7 @@
             <p class="price">{{ item.price | currency }}</p>
             <div class="item-actions">
               <button (click)="addToOrder(item)">Add to Order</button>
-              <button class="edit-btn" (click)="startEditing(item)">Edit</button>
+              <button class="edit-btn" *ngIf="canEditItems()" (click)="startEditing(item)">Edit</button>
             </div>
           </div>
         </div>
@@ -190,7 +190,7 @@
             <p class="price">{{ item.price | currency }}</p>
             <div class="item-actions">
               <button (click)="addToOrder(item)">Add to Order</button>
-              <button class="edit-btn" (click)="startEditing(item)">Edit</button>
+              <button class="edit-btn" *ngIf="canEditItems()" (click)="startEditing(item)">Edit</button>
             </div>
           </div>
         </div>

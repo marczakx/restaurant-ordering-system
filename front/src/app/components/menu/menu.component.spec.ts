@@ -3,6 +3,7 @@ import { of } from 'rxjs';
 import { MenuComponent } from './menu.component';
 import { MenuService } from '../../services/menu.service';
 import { OrderService } from '../../services/order.service';
+import { AuthService } from '../../services/auth.service';
 import { CuisineDto, MenuItemDto, MenuItemTypeDto, Order, OrderItem, OrderStatus } from '../../models/models';
 
 describe('MenuComponent', () => {
@@ -10,6 +11,7 @@ describe('MenuComponent', () => {
   let fixture: ComponentFixture<MenuComponent>;
   let menuServiceSpy: jasmine.SpyObj<MenuService>;
   let orderServiceSpy: jasmine.SpyObj<OrderService>;
+  let authServiceSpy: jasmine.SpyObj<AuthService>;
 
   const mockCuisines: CuisineDto[] = [
     { id: 1, name: 'Italian' },
@@ -56,6 +58,10 @@ describe('MenuComponent', () => {
       'updateStatus',
       'removeItem'
     ]);
+    authServiceSpy = jasmine.createSpyObj('AuthService', ['hasRole', 'getRoles', 'getUsername', 'isLoggedIn']);
+    // By default the user has both menu roles so the existing tests cover
+    // the full UI; role-specific behaviour is asserted in dedicated tests.
+    authServiceSpy.hasRole.and.returnValue(true);
 
     menuServiceSpy.getCuisines.and.returnValue(of(mockCuisines));
     menuServiceSpy.getMenuItemTypes.and.returnValue(of(mockMenuTypes));
@@ -67,7 +73,8 @@ describe('MenuComponent', () => {
       imports: [MenuComponent],
       providers: [
         { provide: MenuService, useValue: menuServiceSpy },
-        { provide: OrderService, useValue: orderServiceSpy }
+        { provide: OrderService, useValue: orderServiceSpy },
+        { provide: AuthService, useValue: authServiceSpy }
       ]
     }).compileComponents();
 
@@ -87,6 +94,43 @@ describe('MenuComponent', () => {
     expect(component.cuisines).toEqual(mockCuisines);
     expect(component.menuTypes).toEqual(mockMenuTypes);
     expect(component.menuItems).toEqual(mockMenuItems);
+  });
+
+  it('should allow adding and editing for a user with both menu roles', () => {
+    authServiceSpy.hasRole.and.callFake((role: string) =>
+      role === 'menu-creator' || role === 'menu-editor');
+
+    expect(component.canAddItems()).toBeTrue();
+    expect(component.canEditItems()).toBeTrue();
+  });
+
+  it('should deny adding and editing for a user without menu roles', () => {
+    authServiceSpy.hasRole.and.returnValue(false);
+
+    expect(component.canAddItems()).toBeFalse();
+    expect(component.canEditItems()).toBeFalse();
+  });
+
+  it('should hide the add button and edit buttons without the menu roles', () => {
+    authServiceSpy.hasRole.and.returnValue(false);
+    fixture.detectChanges();
+
+    const compiled: HTMLElement = fixture.nativeElement;
+    expect(compiled.querySelector('.add-item-bar')).toBeNull();
+
+    const editButtons = compiled.querySelectorAll('button.edit-btn');
+    expect(editButtons.length).toBe(0);
+  });
+
+  it('should show the add button and edit buttons for a user with the menu roles', () => {
+    authServiceSpy.hasRole.and.callFake((role: string) =>
+      role === 'menu-creator' || role === 'menu-editor');
+    fixture.detectChanges();
+
+    const compiled: HTMLElement = fixture.nativeElement;
+    expect(compiled.querySelector('.add-item-bar')).not.toBeNull();
+    const editButtons = compiled.querySelectorAll('button.edit-btn');
+    expect(editButtons.length).toBeGreaterThan(0);
   });
 
   it('should set view mode', () => {

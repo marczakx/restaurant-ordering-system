@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MenuService } from '../../services/menu.service';
 import { OrderService } from '../../services/order.service';
+import { AuthService } from '../../services/auth.service';
 import { CuisineDto, MenuItemDto, MenuItemTypeDto, Order, OrderItem, OrderStatus } from '../../models/models';
 
 @Component({
@@ -38,13 +39,24 @@ export class MenuComponent implements OnInit {
 
   constructor(
     private menuService: MenuService,
-    private orderService: OrderService
+    private orderService: OrderService,
+    private authService: AuthService
   ) {}
 
   ngOnInit() {
     this.loadCuisines();
     this.loadMenuTypes();
     this.loadMenuItems();
+  }
+
+  /** Whether the logged-in user may add new menu items (role: menu-creator). */
+  canAddItems(): boolean {
+    return this.authService.hasRole('menu-creator');
+  }
+
+  /** Whether the logged-in user may edit existing menu items (role: menu-editor). */
+  canEditItems(): boolean {
+    return this.authService.hasRole('menu-editor');
   }
 
   loadCuisines() {

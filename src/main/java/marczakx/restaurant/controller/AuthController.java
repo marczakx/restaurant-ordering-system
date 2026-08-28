@@ -12,6 +12,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
+import java.util.List;
+
+import org.springframework.security.core.GrantedAuthority;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -41,7 +44,26 @@ public class AuthController {
         boolean authenticated = authentication != null
                 && authentication.isAuthenticated()
                 && !(authentication instanceof AnonymousAuthenticationToken);
-        return new AuthStatusDto(authenticated, authenticated ? resolveDisplayName(authentication) : null);
+        if (!authenticated) {
+            return new AuthStatusDto(false, null, List.of());
+        }
+        return new AuthStatusDto(true, resolveDisplayName(authentication), resolveRoles(authentication));
+    }
+
+    /**
+     * Resolves the roles granted to the authenticated user. Spring Security
+     * prefixes role authorities with {@code ROLE_}, so those are stripped to
+     * report plain role names (e.g. {@code menu-editor}, {@code menu-creator})
+     * that the SPA can match against the Keycloak realm roles. Non-role
+     * authorities (scopes, {@code OIDC_USER}, ...) are ignored.
+     */
+    private List<String> resolveRoles(Authentication authentication) {
+        return authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .filter(authority -> authority.startsWith("ROLE_"))
+                .map(authority -> authority.substring("ROLE_".length()))
+                .sorted()
+                .toList();
     }
 
     /**
