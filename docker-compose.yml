@@ -104,6 +104,10 @@ services:
       - CHROME_BIN=/usr/bin/google-chrome
     tty: true
     stdin_open: true
+    # Karma server exposed so the interactive debug page can be opened on
+    # the host while watch mode is running: http://localhost:9876/debug.html
+    ports:
+      - "9876:9876"
     command: sh -c "npm install --legacy-peer-deps && npx ng test --karma-config=karma-ci.conf.js --browsers=ChromeHeadlessNoSandbox"
   e2e-tests:
     image: cypress/browsers:latest

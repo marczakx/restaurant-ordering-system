@@ -48,3 +48,7 @@ secrets.env
 
 ### Other ###
 dockermvnidoc/
+
+### Test artifacts ###
+?/
+front/cypress/e2

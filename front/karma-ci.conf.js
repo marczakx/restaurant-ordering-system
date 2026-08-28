@@ -14,6 +14,11 @@
 module.exports = function (config) {
   config.set({
     frameworks: ['jasmine', '@angular-devkit/build-angular'],
+    // Listen on all interfaces so the Karma server is reachable through
+    // docker-compose port mappings (e.g. the watch-mode debug page at
+    // http://localhost:9876/debug.html on the host).
+    listenAddress: '0.0.0.0',
+    hostname: 'localhost',
     plugins: [
       require('karma-jasmine'),
       require('karma-chrome-launcher'),
