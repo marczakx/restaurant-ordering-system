@@ -37,6 +37,11 @@ public class OrderController {
     return orderService.findAll();
   }
 
+  @GetMapping("/{orderId}")
+  public Order getById(@PathVariable Long orderId) {
+    return orderService.getOrderById(orderId);
+  }
+
   @PutMapping("/{orderId}/status")
   public Order updateStatus(@PathVariable Long orderId, @RequestBody OrderStatus status) {
     Order updatedOrder = orderService.updateStatus(orderId, status);
