@@ -7,6 +7,9 @@
       <ng-container *ngIf="authService.isLoggedIn(); else loginBtn">
         <span class="user-info" *ngIf="authService.getUsername() as username" title="Logged in user">
           👤 {{ username }}
+          <span class="user-roles" *ngIf="authService.getRoles().length" title="Assigned roles">
+            ({{ authService.getRoles().join(', ') }})
+          </span>
         </span>
         <a (click)="logout()" class="logout-btn">Logout</a>
       </ng-container>

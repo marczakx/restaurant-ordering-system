@@ -14,8 +14,9 @@ describe('AppComponent', () => {
   };
 
   beforeEach(async () => {
-    authServiceSpy = jasmine.createSpyObj('AuthService', ['isLoggedIn', 'getUsername', 'cleanToken']);
+    authServiceSpy = jasmine.createSpyObj('AuthService', ['isLoggedIn', 'getUsername', 'getRoles', 'cleanToken']);
     authServiceSpy.isLoggedIn.and.returnValue(false);
+    authServiceSpy.getRoles.and.returnValue([]);
 
     await TestBed.configureTestingModule({
       imports: [AppComponent],
@@ -52,6 +53,29 @@ describe('AppComponent', () => {
     const userInfo = compiled.querySelector('.user-info');
     expect(userInfo).withContext('user-info element should be rendered').not.toBeNull();
     expect(userInfo?.textContent).toContain('google-user');
+  });
+
+  it('should display the assigned roles in the navbar', () => {
+    authServiceSpy.isLoggedIn.and.returnValue(true);
+    authServiceSpy.getUsername.and.returnValue('demo');
+    authServiceSpy.getRoles.and.returnValue(['menu-editor', 'menu-creator']);
+    setup();
+
+    const compiled: HTMLElement = fixture.nativeElement;
+    const roles = compiled.querySelector('.user-roles');
+    expect(roles).withContext('user-roles element should be rendered').not.toBeNull();
+    expect(roles?.textContent).toContain('menu-editor');
+    expect(roles?.textContent).toContain('menu-creator');
+  });
+
+  it('should not show the roles span when the user has no roles', () => {
+    authServiceSpy.isLoggedIn.and.returnValue(true);
+    authServiceSpy.getUsername.and.returnValue('google-user');
+    authServiceSpy.getRoles.and.returnValue([]);
+    setup();
+
+    const compiled: HTMLElement = fixture.nativeElement;
+    expect(compiled.querySelector('.user-roles')).toBeNull();
   });
 
   it('should hide the user info when the username is unknown', () => {
