@@ -1,13 +1,16 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { of } from 'rxjs';
+import { of, Subject } from 'rxjs';
 import { OrdersComponent } from './orders.component';
 import { OrderService } from '../../services/order.service';
+import { WebsocketService } from '../../services/websocket.service';
 import { Order, OrderItem, OrderStatus } from '../../models/models';
 
 describe('OrdersComponent', () => {
   let component: OrdersComponent;
   let fixture: ComponentFixture<OrdersComponent>;
   let orderServiceSpy: jasmine.SpyObj<OrderService>;
+  let websocketServiceSpy: jasmine.SpyObj<WebsocketService>;
+  let orderUpdatesSubject: Subject<Order>;
 
   const mockOrderItem: OrderItem = {
     id: 1,
@@ -34,6 +37,8 @@ describe('OrdersComponent', () => {
   const mockOrders: Order[] = [mockOrder];
 
   beforeEach(async () => {
+    orderUpdatesSubject = new Subject<Order>();
+
     orderServiceSpy = jasmine.createSpyObj('OrderService', [
       'getAllOrders',
       'updateItemQuantity',
@@ -45,10 +50,18 @@ describe('OrdersComponent', () => {
     orderServiceSpy.updateStatus.and.returnValue(of(mockOrder));
     orderServiceSpy.removeItem.and.returnValue(of(mockOrder));
 
+    websocketServiceSpy = jasmine.createSpyObj('WebsocketService', [
+      'connect',
+      'disconnect',
+      'getOrderUpdates'
+    ]);
+    websocketServiceSpy.getOrderUpdates.and.returnValue(orderUpdatesSubject.asObservable());
+
     await TestBed.configureTestingModule({
       imports: [OrdersComponent],
       providers: [
-        { provide: OrderService, useValue: orderServiceSpy }
+        { provide: OrderService, useValue: orderServiceSpy },
+        { provide: WebsocketService, useValue: websocketServiceSpy }
       ]
     }).compileComponents();
 
@@ -66,6 +79,37 @@ describe('OrdersComponent', () => {
   it('should load orders on init', () => {
     expect(orderServiceSpy.getAllOrders).toHaveBeenCalled();
     expect(component.orders).toEqual(mockOrders);
+  });
+
+  it('should connect to websocket on init', () => {
+    expect(websocketServiceSpy.connect).toHaveBeenCalled();
+  });
+
+  it('should subscribe to order updates on init', () => {
+    expect(websocketServiceSpy.getOrderUpdates).toHaveBeenCalled();
+  });
+
+  it('should update existing order when websocket update received', () => {
+    const updatedOrder: Order = { ...mockOrder, status: 'IN_PROGRESS' };
+    orderUpdatesSubject.next(updatedOrder);
+    expect(component.orders[0].status).toBe('IN_PROGRESS');
+  });
+
+  it('should add new order when websocket update received for unknown id', () => {
+    const newOrder: Order = {
+      id: 99,
+      orderItems: [],
+      customer: 'New Customer',
+      status: 'TO_DO'
+    };
+    orderUpdatesSubject.next(newOrder);
+    expect(component.orders.length).toBe(2);
+    expect(component.orders.find(o => o.id === 99)).toEqual(newOrder);
+  });
+
+  it('should disconnect from websocket on destroy', () => {
+    component.ngOnDestroy();
+    expect(websocketServiceSpy.disconnect).toHaveBeenCalled();
   });
 
   it('should set view mode', () => {

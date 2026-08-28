@@ -1,7 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Subscription } from 'rxjs';
 import { OrderService } from '../../services/order.service';
+import { WebsocketService } from '../../services/websocket.service';
 import { Order, OrderStatus } from '../../models/models';
 
 @Component({
@@ -11,7 +13,7 @@ import { Order, OrderStatus } from '../../models/models';
   templateUrl: './orders.component.html',
   styleUrls: ['./orders.component.scss']
 })
-export class OrdersComponent implements OnInit {
+export class OrdersComponent implements OnInit, OnDestroy {
   orders: Order[] = [];
   viewMode: 'cards' | 'list' | 'classic' | 'table' | 'board' | 'compact' = 'cards';
   expandedOrderId: number | null = null;
@@ -23,10 +25,38 @@ export class OrdersComponent implements OnInit {
     { status: 'DONE', label: 'Gotowe', headerClass: 'column-done' }
   ];
 
-  constructor(private orderService: OrderService) {}
+  private wsSubscription: Subscription | null = null;
+
+  constructor(
+    private orderService: OrderService,
+    private websocketService: WebsocketService
+  ) {}
 
   ngOnInit() {
     this.loadOrders();
+    this.websocketService.connect();
+    this.wsSubscription = this.websocketService.getOrderUpdates().subscribe(order => {
+      this.updateOrderInList(order);
+    });
+  }
+
+  ngOnDestroy() {
+    this.wsSubscription?.unsubscribe();
+    this.websocketService.disconnect();
+  }
+
+  /**
+   * Updates the local orders list with a real-time order update received
+   * via WebSocket. If the order already exists it is replaced in place;
+   * otherwise it is appended to the list.
+   */
+  updateOrderInList(order: Order) {
+    const index = this.orders.findIndex(o => o.id === order.id);
+    if (index !== -1) {
+      this.orders[index] = order;
+    } else {
+      this.orders = [...this.orders, order];
+    }
   }
 
   loadOrders() {
