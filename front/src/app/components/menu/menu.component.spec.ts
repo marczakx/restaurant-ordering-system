@@ -225,4 +225,83 @@ describe('MenuComponent', () => {
     component.saveEditing();
     expect(menuServiceSpy.updateMenuItem).not.toHaveBeenCalled();
   });
+
+  it('should open add form with empty fields when starting adding', () => {
+    component.startAdding();
+    expect(component.addingItem).toBeTrue();
+    expect(component.newName).toBe('');
+    expect(component.newPrice).toBeNull();
+    expect(component.newTypeName).toBe('');
+    expect(component.newCuisineIds).toEqual([]);
+  });
+
+  it('should close edit form when starting adding', () => {
+    component.startEditing(mockMenuItem);
+    component.startAdding();
+    expect(component.editingItem).toBeNull();
+    expect(component.addingItem).toBeTrue();
+  });
+
+  it('should reset add form state when canceling adding', () => {
+    component.startAdding();
+    component.newName = 'Some Item';
+    component.cancelAdding();
+    expect(component.addingItem).toBeFalse();
+    expect(component.newName).toBe('');
+    expect(component.newPrice).toBeNull();
+  });
+
+  it('should toggle cuisine id in new item selection', () => {
+    component.startAdding();
+    component.toggleNewCuisine(1);
+    component.toggleNewCuisine(2);
+    expect(component.newCuisineIds).toEqual([1, 2]);
+    component.toggleNewCuisine(1);
+    expect(component.newCuisineIds).toEqual([2]);
+  });
+
+  it('should add menu item and append it to the list on save', () => {
+    const createdItem: MenuItemDto = {
+      id: 99,
+      name: 'Brand New Item',
+      price: 15,
+      additions: [],
+      menuItemTypeName: 'Main',
+      cuisineIds: [1]
+    };
+    menuServiceSpy.addMenuItem.and.returnValue(of(createdItem));
+
+    component.startAdding();
+    component.newName = 'Brand New Item';
+    component.newPrice = 15;
+    component.newTypeName = 'Main';
+    component.newCuisineIds = [1];
+    component.saveNewItem();
+
+    expect(menuServiceSpy.addMenuItem).toHaveBeenCalledWith(jasmine.objectContaining({
+      name: 'Brand New Item',
+      price: 15,
+      menuItemTypeName: 'Main',
+      cuisineIds: [1]
+    }));
+    expect(component.menuItems.length).toBe(2);
+    expect(component.menuItems[1].id).toBe(99);
+    expect(component.addingItem).toBeFalse();
+  });
+
+  it('should not call add service when name is empty', () => {
+    component.startAdding();
+    component.newName = '';
+    component.newPrice = 10;
+    component.saveNewItem();
+    expect(menuServiceSpy.addMenuItem).not.toHaveBeenCalled();
+  });
+
+  it('should not call add service when price is missing', () => {
+    component.startAdding();
+    component.newName = 'Some Item';
+    component.newPrice = null;
+    component.saveNewItem();
+    expect(menuServiceSpy.addMenuItem).not.toHaveBeenCalled();
+  });
 });

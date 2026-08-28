@@ -79,18 +79,23 @@ public class MenuService {
     menuItem.setPrice(menuItemDto.price());
 
     if (menuItemDto.menuItemTypeName() != null) {
-      MenuItemType menuItemType = menuItemTypeRepository.findByName(menuItemDto.menuItemTypeName())
-          .orElseThrow(() -> new IllegalArgumentException("Menu item type not found: " + menuItemDto.menuItemTypeName()));
-
       // The owning side of the relation drives the join table update:
       menuItem.getMenuItemType().clear();
-      menuItem.getMenuItemType().add(menuItemType);
 
-      // Keep the inverse side consistent in memory (same approach as addMenuItem):
-      if (menuItemType.getMenuItems() == null || !(menuItemType.getMenuItems() instanceof HashSet)) {
-        menuItemType.setMenuItems(new HashSet<>());
+      // An empty type name means "no type" – clear the relation instead of
+      // looking up a type that cannot exist.
+      if (!menuItemDto.menuItemTypeName().isBlank()) {
+        MenuItemType menuItemType = menuItemTypeRepository.findByName(menuItemDto.menuItemTypeName())
+            .orElseThrow(() -> new IllegalArgumentException("Menu item type not found: " + menuItemDto.menuItemTypeName()));
+
+        menuItem.getMenuItemType().add(menuItemType);
+
+        // Keep the inverse side consistent in memory (same approach as addMenuItem):
+        if (menuItemType.getMenuItems() == null || !(menuItemType.getMenuItems() instanceof HashSet)) {
+          menuItemType.setMenuItems(new HashSet<>());
+        }
+        menuItemType.getMenuItems().add(menuItem);
       }
-      menuItemType.getMenuItems().add(menuItem);
     }
 
     if (menuItemDto.cuisineIds() != null) {

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -232,6 +233,44 @@ public class MenuServiceTests {
 
     // When & Then
     assertThrows(IllegalArgumentException.class, () -> menuSevice.updateMenuItem(99L, updateDto));
+  }
+
+  @Test
+  void updateMenuItem_EmptyTypeName_ClearsTypeRelation() {
+    // Given
+    MenuItemType pizzaType = MenuItemType.builder()
+      .id(1L)
+      .name("Pizza")
+      .menuItems(new HashSet<>())
+      .build();
+
+    MenuItem existingItem = MenuItem.builder()
+      .id(10L)
+      .name("Old Pizza")
+      .price(9.99f)
+      .cuisines(new HashSet<>())
+      .menuItemType(new HashSet<>(Set.of(pizzaType)))
+      .build();
+
+    MenuItemDto updateDto = new MenuItemDto(
+      10L,
+      "Updated Pizza",
+      14.99f,
+      new ArrayList<>(),
+      "",
+      Set.of()
+    );
+
+    Mockito.when(menuItemRepository.findById(10L)).thenReturn(Optional.of(existingItem));
+
+    // When
+    MenuItemDto result = menuSevice.updateMenuItem(10L, updateDto);
+
+    // Then
+    assertNotNull(result);
+    assertEquals("Updated Pizza", result.name());
+    assertNull(result.menuItemTypeName());
+    Mockito.verify(menuItemTypeRepository, Mockito.never()).findByName(Mockito.anyString());
   }
 
   @Test

@@ -239,6 +239,33 @@ h1 {
 .menu-item .edit-btn:hover {
   background: #f57c00;
 }
+.add-item-bar {
+  margin-bottom: 2rem;
+}
+.add-btn {
+  padding: 0.5rem 1rem;
+  background: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
+.add-btn:hover {
+  background: #43a047;
+}
+.add-form {
+  margin-bottom: 2rem;
+  background: white;
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border-left: 4px solid #4caf50;
+}
+.add-form h2 {
+  margin-bottom: 1rem;
+  color: #333;
+}
 .edit-form {
   margin-bottom: 2rem;
   background: white;

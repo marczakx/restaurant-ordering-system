@@ -30,6 +30,12 @@ export class MenuComponent implements OnInit {
   editTypeName: string = '';
   editCuisineIds: number[] = [];
 
+  addingItem: boolean = false;
+  newName: string = '';
+  newPrice: number | null = null;
+  newTypeName: string = '';
+  newCuisineIds: number[] = [];
+
   constructor(
     private menuService: MenuService,
     private orderService: OrderService
@@ -94,6 +100,53 @@ export class MenuComponent implements OnInit {
     this.editPrice = null;
     this.editTypeName = '';
     this.editCuisineIds = [];
+  }
+
+  startAdding() {
+    this.cancelEditing();
+    this.addingItem = true;
+    this.newName = '';
+    this.newPrice = null;
+    this.newTypeName = '';
+    this.newCuisineIds = [];
+  }
+
+  cancelAdding() {
+    this.addingItem = false;
+    this.newName = '';
+    this.newPrice = null;
+    this.newTypeName = '';
+    this.newCuisineIds = [];
+  }
+
+  toggleNewCuisine(cuisineId: number) {
+    const index = this.newCuisineIds.indexOf(cuisineId);
+    if (index >= 0) {
+      this.newCuisineIds.splice(index, 1);
+    } else {
+      this.newCuisineIds.push(cuisineId);
+    }
+  }
+
+  saveNewItem() {
+    if (!this.newName || this.newPrice === null) return;
+
+    const newItem: MenuItemDto = {
+      id: null,
+      name: this.newName,
+      price: this.newPrice,
+      additions: [],
+      menuItemTypeName: this.newTypeName,
+      cuisineIds: this.newCuisineIds
+    };
+
+    this.menuService.addMenuItem(newItem).subscribe({
+      next: (saved) => {
+        this.menuItems = [...this.menuItems, saved];
+        this.cancelAdding();
+      },
+      error: () => alert('Failed to add menu item.')
+    });
   }
 
   toggleEditCuisine(cuisineId: number) {

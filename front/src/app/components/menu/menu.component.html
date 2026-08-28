@@ -37,6 +37,46 @@
     </div>
   </div>
 
+  <!-- Add new item button -->
+  <div class="add-item-bar" *ngIf="!addingItem && !editingItem">
+    <button class="add-btn" (click)="startAdding()">+ Add New Item</button>
+  </div>
+
+  <!-- Add new item form -->
+  <div class="add-form" *ngIf="addingItem">
+    <h2>Add New Menu Item</h2>
+    <div class="edit-fields">
+      <label>
+        Name:
+        <input [(ngModel)]="newName" placeholder="Item name" />
+      </label>
+      <label>
+        Price:
+        <input [(ngModel)]="newPrice" type="number" step="0.01" min="0" placeholder="Price" />
+      </label>
+      <label>
+        Type:
+        <select [(ngModel)]="newTypeName">
+          <option value="">No type</option>
+          <option *ngFor="let type of menuTypes" [value]="type.name">{{ type.name }}</option>
+        </select>
+      </label>
+      <div class="edit-cuisines">
+        <strong>Cuisines:</strong>
+        <label *ngFor="let cuisine of cuisines" class="cuisine-checkbox">
+          <input type="checkbox"
+                 [checked]="newCuisineIds.includes(cuisine.id)"
+                 (change)="toggleNewCuisine(cuisine.id)" />
+          {{ cuisine.name }}
+        </label>
+      </div>
+    </div>
+    <div class="edit-actions">
+      <button class="save-btn" (click)="saveNewItem()" [disabled]="!newName || newPrice === null">Add</button>
+      <button class="cancel-btn" (click)="cancelAdding()">Cancel</button>
+    </div>
+  </div>
+
   <!-- Edit form -->
   <div class="edit-form" *ngIf="editingItem">
     <h2>Edit: {{ editingItem.name }}</h2>
