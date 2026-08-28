@@ -172,4 +172,93 @@ public class MenuServiceTests {
     assertThrows(IllegalArgumentException.class, () -> menuSevice.addMenuItem(inputDto));
   }
 
+  @Test
+  void updateMenuItem_ValidMenuItemDto_ReturnsUpdatedItem() {
+    // Given
+    MenuItem existingItem = MenuItem.builder()
+      .id(10L)
+      .name("Old Pizza")
+      .price(9.99f)
+      .cuisines(new HashSet<>())
+      .menuItemType(new HashSet<>())
+      .build();
+
+    MenuItemDto updateDto = new MenuItemDto(
+      10L,
+      "Updated Pizza",
+      14.99f,
+      new ArrayList<>(),
+      "Pizza",
+      Set.of(1L)
+    );
+
+    MenuItemType pizzaType = MenuItemType.builder()
+      .id(1L)
+      .name("Pizza")
+      .menuItems(new HashSet<>())
+      .build();
+
+    Cuisines cuisine1 = Cuisines.builder().id(1L).name("Italian").build();
+
+    Mockito.when(menuItemRepository.findById(10L)).thenReturn(Optional.of(existingItem));
+    Mockito.when(menuItemTypeRepository.findByName("Pizza")).thenReturn(Optional.of(pizzaType));
+    Mockito.when(cuisinesRepository.findAllById(Set.of(1L))).thenReturn(List.of(cuisine1));
+
+    // When
+    MenuItemDto result = menuSevice.updateMenuItem(10L, updateDto);
+
+    // Then
+    assertNotNull(result);
+    assertEquals("Updated Pizza", result.name());
+    assertEquals(14.99f, result.price());
+    assertEquals("Pizza", result.menuItemTypeName());
+    assertTrue(result.cuisineIds().contains(1L));
+    Mockito.verify(menuItemRepository).findById(10L);
+  }
+
+  @Test
+  void updateMenuItem_NonExistingId_ThrowsException() {
+    // Given
+    MenuItemDto updateDto = new MenuItemDto(
+      99L,
+      "Ghost Pizza",
+      10.0f,
+      new ArrayList<>(),
+      "Pizza",
+      Set.of()
+    );
+
+    Mockito.when(menuItemRepository.findById(99L)).thenReturn(Optional.empty());
+
+    // When & Then
+    assertThrows(IllegalArgumentException.class, () -> menuSevice.updateMenuItem(99L, updateDto));
+  }
+
+  @Test
+  void updateMenuItem_InvalidMenuItemType_ThrowsException() {
+    // Given
+    MenuItem existingItem = MenuItem.builder()
+      .id(10L)
+      .name("Old Pizza")
+      .price(9.99f)
+      .cuisines(new HashSet<>())
+      .menuItemType(new HashSet<>())
+      .build();
+
+    MenuItemDto updateDto = new MenuItemDto(
+      10L,
+      "Updated Pizza",
+      14.99f,
+      new ArrayList<>(),
+      "NonExistentType",
+      Set.of()
+    );
+
+    Mockito.when(menuItemRepository.findById(10L)).thenReturn(Optional.of(existingItem));
+    Mockito.when(menuItemTypeRepository.findByName("NonExistentType")).thenReturn(Optional.empty());
+
+    // When & Then
+    assertThrows(IllegalArgumentException.class, () -> menuSevice.updateMenuItem(10L, updateDto));
+  }
+
 }

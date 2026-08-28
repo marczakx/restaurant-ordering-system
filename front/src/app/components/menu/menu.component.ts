@@ -24,6 +24,12 @@ export class MenuComponent implements OnInit {
   customerName: string = '';
   orderStatus: OrderStatus = 'TO_DO';
 
+  editingItem: MenuItemDto | null = null;
+  editName: string = '';
+  editPrice: number | null = null;
+  editTypeName: string = '';
+  editCuisineIds: number[] = [];
+
   constructor(
     private menuService: MenuService,
     private orderService: OrderService
@@ -72,6 +78,56 @@ export class MenuComponent implements OnInit {
 
   setStatus(status: OrderStatus) {
     this.orderStatus = status;
+  }
+
+  startEditing(item: MenuItemDto) {
+    this.editingItem = item;
+    this.editName = item.name;
+    this.editPrice = item.price;
+    this.editTypeName = item.menuItemTypeName || '';
+    this.editCuisineIds = item.cuisineIds ? [...item.cuisineIds] : [];
+  }
+
+  cancelEditing() {
+    this.editingItem = null;
+    this.editName = '';
+    this.editPrice = null;
+    this.editTypeName = '';
+    this.editCuisineIds = [];
+  }
+
+  toggleEditCuisine(cuisineId: number) {
+    const index = this.editCuisineIds.indexOf(cuisineId);
+    if (index >= 0) {
+      this.editCuisineIds.splice(index, 1);
+    } else {
+      this.editCuisineIds.push(cuisineId);
+    }
+  }
+
+  saveEditing() {
+    if (!this.editingItem || this.editingItem.id === null) return;
+    if (!this.editName || this.editPrice === null) return;
+
+    const updatedItem: MenuItemDto = {
+      id: this.editingItem.id,
+      name: this.editName,
+      price: this.editPrice,
+      additions: this.editingItem.additions || [],
+      menuItemTypeName: this.editTypeName,
+      cuisineIds: this.editCuisineIds
+    };
+
+    this.menuService.updateMenuItem(this.editingItem.id, updatedItem).subscribe({
+      next: (saved) => {
+        const index = this.menuItems.findIndex(mi => mi.id !== null && saved.id !== null && mi.id === saved.id);
+        if (index >= 0) {
+          this.menuItems[index] = saved;
+        }
+        this.cancelEditing();
+      },
+      error: () => alert('Failed to update menu item.')
+    });
   }
 
   addToOrder(item: MenuItemDto) {

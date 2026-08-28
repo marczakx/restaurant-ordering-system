@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -54,6 +55,12 @@ public class MenuController {
   public ResponseEntity<MenuItemDto> addMenuItem(@RequestBody MenuItemDto menuItemDto) {
     MenuItemDto createdItem = menuService.addMenuItem(menuItemDto);
     return ResponseEntity.status(HttpStatus.CREATED).body(createdItem);
+  }
+
+  @PutMapping("items/{id}")
+  public ResponseEntity<MenuItemDto> updateMenuItem(@PathVariable Long id, @RequestBody MenuItemDto menuItemDto) {
+    MenuItemDto updatedItem = menuService.updateMenuItem(id, menuItemDto);
+    return ResponseEntity.ok(updatedItem);
   }
 
 }

@@ -46,7 +46,8 @@ describe('MenuComponent', () => {
       'getMenuItemTypes',
       'getMenuItems',
       'getAllMenuItems',
-      'addMenuItem'
+      'addMenuItem',
+      'updateMenuItem'
     ]);
     orderServiceSpy = jasmine.createSpyObj('OrderService', [
       'saveOrder',
@@ -164,5 +165,64 @@ describe('MenuComponent', () => {
     component.selectedCuisine = 1;
     component.onCuisineChange();
     expect(menuServiceSpy.getAllMenuItems).toHaveBeenCalledWith(1);
+  });
+
+  it('should populate edit fields when starting editing', () => {
+    component.startEditing(mockMenuItem);
+    expect(component.editingItem).toBe(mockMenuItem);
+    expect(component.editName).toBe('Pizza');
+    expect(component.editPrice).toBe(20);
+    expect(component.editTypeName).toBe('Main');
+    expect(component.editCuisineIds).toEqual([1]);
+  });
+
+  it('should clear edit state when canceling editing', () => {
+    component.startEditing(mockMenuItem);
+    component.cancelEditing();
+    expect(component.editingItem).toBeNull();
+    expect(component.editName).toBe('');
+    expect(component.editPrice).toBeNull();
+    expect(component.editTypeName).toBe('');
+    expect(component.editCuisineIds).toEqual([]);
+  });
+
+  it('should toggle cuisine id in edit selection', () => {
+    component.startEditing(mockMenuItem);
+    component.toggleEditCuisine(2);
+    expect(component.editCuisineIds).toEqual([1, 2]);
+    component.toggleEditCuisine(2);
+    expect(component.editCuisineIds).toEqual([1]);
+  });
+
+  it('should update menu item and refresh list entry on save', () => {
+    const updatedItem: MenuItemDto = { ...mockMenuItem, name: 'Pizza Updated', price: 25 };
+    menuServiceSpy.updateMenuItem.and.returnValue(of(updatedItem));
+
+    component.startEditing(mockMenuItem);
+    component.editName = 'Pizza Updated';
+    component.editPrice = 25;
+    component.saveEditing();
+
+    expect(menuServiceSpy.updateMenuItem).toHaveBeenCalledWith(1, jasmine.objectContaining({
+      name: 'Pizza Updated',
+      price: 25
+    }));
+    expect(component.menuItems[0].name).toBe('Pizza Updated');
+    expect(component.editingItem).toBeNull();
+  });
+
+  it('should not call update service when name is empty', () => {
+    component.startEditing(mockMenuItem);
+    component.editName = '';
+    component.saveEditing();
+    expect(menuServiceSpy.updateMenuItem).not.toHaveBeenCalled();
+  });
+
+  it('should not call update service when item has no id', () => {
+    const noIdItem: MenuItemDto = { ...mockMenuItem, id: null };
+    component.startEditing(noIdItem);
+    component.editName = 'New Name';
+    component.saveEditing();
+    expect(menuServiceSpy.updateMenuItem).not.toHaveBeenCalled();
   });
 });

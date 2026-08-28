@@ -38,4 +38,8 @@ export class MenuService {
   addMenuItem(menuItem: MenuItemDto): Observable<MenuItemDto> {
     return this.http.post<MenuItemDto>(`${this.apiUrl}/items`, menuItem);
   }
+
+  updateMenuItem(id: number, menuItem: MenuItemDto): Observable<MenuItemDto> {
+    return this.http.put<MenuItemDto>(`${this.apiUrl}/items/${id}`, menuItem);
+  }
 }

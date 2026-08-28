@@ -37,6 +37,41 @@
     </div>
   </div>
 
+  <!-- Edit form -->
+  <div class="edit-form" *ngIf="editingItem">
+    <h2>Edit: {{ editingItem.name }}</h2>
+    <div class="edit-fields">
+      <label>
+        Name:
+        <input [(ngModel)]="editName" placeholder="Item name" />
+      </label>
+      <label>
+        Price:
+        <input [(ngModel)]="editPrice" type="number" step="0.01" min="0" placeholder="Price" />
+      </label>
+      <label>
+        Type:
+        <select [(ngModel)]="editTypeName">
+          <option value="">No type</option>
+          <option *ngFor="let type of menuTypes" [value]="type.name">{{ type.name }}</option>
+        </select>
+      </label>
+      <div class="edit-cuisines">
+        <strong>Cuisines:</strong>
+        <label *ngFor="let cuisine of cuisines" class="cuisine-checkbox">
+          <input type="checkbox"
+                 [checked]="editCuisineIds.includes(cuisine.id)"
+                 (change)="toggleEditCuisine(cuisine.id)" />
+          {{ cuisine.name }}
+        </label>
+      </div>
+    </div>
+    <div class="edit-actions">
+      <button class="save-btn" (click)="saveEditing()" [disabled]="!editName || editPrice === null">Save</button>
+      <button class="cancel-btn" (click)="cancelEditing()">Cancel</button>
+    </div>
+  </div>
+
   <div class="order-summary" *ngIf="orderItems.length > 0">
     <h2>Your Order</h2>
     <div class="status-buttons">
@@ -69,7 +104,10 @@
           <strong>Additions:</strong>
           <span *ngFor="let add of item.additions">{{ add.name }} (+{{ add.price | currency }})</span>
         </div>
-        <button (click)="addToOrder(item)">Add to Order</button>
+        <div class="item-actions">
+          <button (click)="addToOrder(item)">Add to Order</button>
+          <button class="edit-btn" (click)="startEditing(item)">Edit</button>
+        </div>
       </div>
     </ng-container>
 
@@ -87,7 +125,10 @@
           </div>
           <div class="list-item-actions">
             <p class="price">{{ item.price | currency }}</p>
-            <button (click)="addToOrder(item)">Add to Order</button>
+            <div class="item-actions">
+              <button (click)="addToOrder(item)">Add to Order</button>
+              <button class="edit-btn" (click)="startEditing(item)">Edit</button>
+            </div>
           </div>
         </div>
       </div>
@@ -107,7 +148,10 @@
           </div>
           <div class="classic-item-actions">
             <p class="price">{{ item.price | currency }}</p>
-            <button (click)="addToOrder(item)">Add to Order</button>
+            <div class="item-actions">
+              <button (click)="addToOrder(item)">Add to Order</button>
+              <button class="edit-btn" (click)="startEditing(item)">Edit</button>
+            </div>
           </div>
         </div>
       </div>
