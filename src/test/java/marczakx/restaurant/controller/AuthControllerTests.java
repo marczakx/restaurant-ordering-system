@@ -5,8 +5,13 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.web.servlet.MockMvc;
+
+import java.util.Collections;
+import java.util.Map;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -38,5 +43,49 @@ class AuthControllerTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.authenticated").value(true))
                 .andExpect(jsonPath("$.username").value("google-user"));
+    }
+
+    @Test
+    void shouldReportEmailInsteadOfNumericSubjectForGoogleOAuth2User() throws Exception {
+        mockMvc.perform(get("/api/auth/status")
+                        .with(SecurityMockMvcRequestPostProcessors.authentication(googleToken(
+                                Map.of("sub", "1234567890",
+                                       "email", "john.doe@example.com",
+                                       "name", "John Doe")))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.authenticated").value(true))
+                .andExpect(jsonPath("$.username").value("john.doe@example.com"));
+    }
+
+    @Test
+    void shouldReportFullNameWhenEmailAttributeIsMissing() throws Exception {
+        mockMvc.perform(get("/api/auth/status")
+                        .with(SecurityMockMvcRequestPostProcessors.authentication(googleToken(
+                                Map.of("sub", "1234567890",
+                                       "name", "John Doe")))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.authenticated").value(true))
+                .andExpect(jsonPath("$.username").value("John Doe"));
+    }
+
+    @Test
+    void shouldFallBackToNumericSubjectWhenNoEmailOrNameAttribute() throws Exception {
+        mockMvc.perform(get("/api/auth/status")
+                        .with(SecurityMockMvcRequestPostProcessors.authentication(googleToken(
+                                Map.of("sub", "1234567890")))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.authenticated").value(true))
+                .andExpect(jsonPath("$.username").value("1234567890"));
+    }
+
+    /**
+     * Builds an OAuth2 authentication like the one Spring Security stores in
+     * the session after the Google login. The principal name ("sub") is the
+     * numeric Google subject, which is what used to be displayed in the UI.
+     */
+    private static OAuth2AuthenticationToken googleToken(Map<String, Object> attributes) {
+        DefaultOAuth2User principal = new DefaultOAuth2User(
+                Collections.emptySet(), attributes, "sub");
+        return new OAuth2AuthenticationToken(principal, principal.getAuthorities(), "google");
     }
 }

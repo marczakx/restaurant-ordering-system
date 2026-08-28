@@ -5,6 +5,8 @@ import marczakx.restaurant.model.dto.AuthStatusDto;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -39,6 +41,29 @@ public class AuthController {
         boolean authenticated = authentication != null
                 && authentication.isAuthenticated()
                 && !(authentication instanceof AnonymousAuthenticationToken);
-        return new AuthStatusDto(authenticated, authenticated ? authentication.getName() : null);
+        return new AuthStatusDto(authenticated, authenticated ? resolveDisplayName(authentication) : null);
+    }
+
+    /**
+     * Resolves a human-readable name for the authenticated user. For the
+     * Google OAuth2 login the principal is an {@link OAuth2User} whose
+     * {@code getName()} returns the numeric Google subject, so we prefer the
+     * {@code email} or {@code name} attribute instead. For other login
+     * methods (e.g. Keycloak password flow) the regular principal name is
+     * used.
+     */
+    private String resolveDisplayName(Authentication authentication) {
+        if (authentication instanceof OAuth2AuthenticationToken oauthToken) {
+            OAuth2User oauth2User = oauthToken.getPrincipal();
+            Object email = oauth2User.getAttribute("email");
+            if (email instanceof String s && !s.isBlank()) {
+                return s;
+            }
+            Object name = oauth2User.getAttribute("name");
+            if (name instanceof String s && !s.isBlank()) {
+                return s;
+            }
+        }
+        return authentication.getName();
     }
 }
