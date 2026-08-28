@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: restaurant-backend
+  namespace: restaurant
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: restaurant-backend
+  template:
+    metadata:
+      labels:
+        app: restaurant-backend
+    spec:
+      containers:
+      - name: backend
+        image: marczakx/restaurant-backend:1.0.1
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: production
+        - name: SPRING_DATASOURCE_URL
+          value: jdbc:postgresql://restaurant-postgres:5432/restaurant
+        - name: SPRING_DATASOURCE_DRIVER
+          value: org.postgresql.Driver
+        - name: SPRING_DATASOURCE_USERNAME
+          value: postgres
+        - name: SPRING_DATASOURCE_PASSWORD
+          value: restaurant
+        - name: SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT
+          value: org.hibernate.dialect.PostgreSQLDialect

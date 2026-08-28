@@ -1,0 +1,119 @@
+# Project Rules
+
+## General Principles
+- Always make the smallest safe change that solves the task.
+- Prefer clarity, consistency, and maintainability over cleverness.
+- Follow the existing code style, architecture, naming, and patterns in the repository.
+- Do not introduce unrelated refactors unless they are clearly needed.
+
+## Git and Commits
+- Always create a commit after completing a task, if the repository state allows it.
+- Use clear, short, conventional commit messages.
+- Keep each commit focused on one logical change.
+- Do not bundle unrelated fixes into the same commit.
+- NEVER use generic commit messages like "Auto-commit: code changes" — always write a descriptive, conventional message (e.g. `feat:`, `fix:`, `docs:`, `refactor:`).
+
+## Commit Message Template
+Clime can be configured to use a commit message template that follows the Conventional Commits specification. When the template is present, clime will prompt you for the type, scope (optional), and subject, then generate a message such as:
+
+```
+feat: add order status endpoint
+```
+
+### Template Syntax
+The template file should contain a single line with the following placeholders:
+
+```
+<type>(<scope>): <subject>
+```
+
+* `<type>` – one of `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`.
+* `<scope>` – optional, describes the area of the code affected.
+* `<subject>` – a short description of the change.
+
+If you want clime to automatically use this template, create a file named `commit_template.txt` in the project root with the line above. Clime will then use it when you run `clime auto-commit`.
+
+## Testing Rules
+- Run the relevant tests after every code change.
+- If the change affects a broader area, run the full test suite when practical.
+- If tests fail, fix the code and rerun the tests before finishing.
+- Do not consider a task complete while tests are failing.
+
+## New Features
+- For every new feature, add new tests or update existing tests.
+- Cover the happy path and important edge cases.
+- If a feature changes behavior, verify the expected behavior with tests before finishing.
+- Do not add feature code without corresponding test coverage unless explicitly impossible.
+
+## Bug Fixes
+- Reproduce the bug before changing the code when possible.
+- Add a regression test that fails before the fix and passes after it.
+- Keep the fix targeted and avoid unnecessary changes.
+
+## Workflow
+1. Inspect the relevant code and understand the existing behavior.
+2. Implement the smallest correct change.
+3. Add or update tests for the change.
+4. Run the relevant tests.
+5. Fix any failures.
+6. Commit the work with a clear message.
+
+## Quality Checks
+- Before finishing, make sure the code is readable and consistent.
+- Verify formatting, linting, and tests when applicable.
+- If something cannot be completed, explain exactly why and what remains.
+
+## Docker & Docker Compose
+
+### Running the Application
+- Use Docker Compose to start the application stack.
+- Start the backend and frontend services:
+  ```bash
+  docker compose up backend frontend
+  ```
+- `backend` – starts the Spring Boot service (port 8081).
+- `frontend` – starts the Angular UI (port 8082).
+- The `db` service (PostgreSQL) is started automatically as a dependency of `backend`.
+
+### Building with Maven inside Docker
+- The project uses a multi-stage Dockerfile.
+- To build the JAR without running the container:
+  ```bash
+  docker build -t restaurant-backend:latest -f Dockerfile .
+  ```
+- The resulting image contains the compiled JAR and can be run with:
+  ```bash
+  docker run --rm -p 8081:8080 restaurant-backend:latest
+  ```
+
+### Running Integration Tests
+- Integration tests are bundled in the `integration-tests` service defined in `docker-compose.yml`.
+- Run them with:
+  ```bash
+  docker compose run --rm integration-tests
+  ```
+- This mounts the source tree into the container and executes `./mvnw test`.
+
+### Running E2E Tests
+- E2E tests are bundled in the `e2e-tests` service defined in `docker-compose.yml`.
+- Run them with:
+  ```bash
+  docker compose run --rm e2e-tests
+  ```
+- This mounts the frontend source tree and executes Cypress tests against the running frontend.
+
+### Docker Compose Services Overview
+- `db` – PostgreSQL 16, port 5433:5432, credentials: restaurant/restaurant.
+- `backend` – Spring Boot, port 8081:8080, depends on `db`.
+- `frontend` – Angular UI, port 8082:80, depends on `backend`.
+- `e2e-tests` – Cypress browser tests, depends on `frontend`.
+- `integration-tests` – Maven test runner, depends on `backend`.
+
+### Environment Variables
+- `JWT_SECRET` – JWT signing secret (default provided in docker-compose.yml).
+- `JWT_EXPIRATION_MS` – JWT expiration in milliseconds (default 86400000).
+
+### Commit Policy for Docker Changes
+- All changes that modify the Docker configuration should be committed with a clear message.
+- Example: `git commit -am "Add integration-tests service and cline documentation"`
+- After committing, push to the remote repository: `git push origin main`

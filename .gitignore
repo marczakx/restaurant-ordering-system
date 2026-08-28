@@ -31,3 +31,17 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Frontend (Angular) ###
+front/node_modules/
+front/dist/
+front/.angular/
+front/package-lock.json
+
+### Cypress ###
+front/cypress/downloads/
+front/cypress/screenshots/
+front/cypress/videos/
+
+### Other ###
+dockermvnidoc/

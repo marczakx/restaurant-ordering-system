@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+#
+# Build and push all application images to Docker Hub with version tags.
+#
+# Every image is tagged twice: the version from the VERSION file and `latest`.
+# Kubernetes manifests reference the pinned version tag.
+#
+# Usage:
+#   ./scripts/build-and-push.sh              # build & push all images
+#   ./scripts/build-and-push.sh backend      # only backend
+#   ./scripts/build-and-push.sh frontend     # only frontend
+#   ./scripts/build-and-push.sh e2e          # only e2e runner
+#
+set -euo pipefail
+
+DOCKER_USER="${DOCKER_USER:-marczakx}"
+VERSION="$(tr -d '[:space:]' < "$(dirname "${BASH_SOURCE[0]}")/../VERSION")"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(dirname "$SCRIPT_DIR")"
+
+build_and_push() {
+  local name="$1" dockerfile="$2" context="$3"
+  local image="${DOCKER_USER}/${name}"
+
+  echo "==> Building ${image}:${VERSION}"
+  docker build -t "${image}:${VERSION}" -t "${image}:latest" -f "${dockerfile}" "${context}"
+
+  echo "==> Pushing ${image}:${VERSION} and ${image}:latest"
+  docker push "${image}:${VERSION}"
+  docker push "${image}:latest"
+}
+
+TARGETS=("${@:-all}")
+[[ " ${TARGETS[*]} " == *" all "* ]] && TARGETS=(backend frontend e2e)
+
+for target in "${TARGETS[@]}"; do
+  case "$target" in
+    backend)
+      # Backend requires the intermediate Maven dependencies image
+      if ! docker image inspect restaurant-maven-deps:latest >/dev/null 2>&1; then
+        echo "==> Building intermediate image restaurant-maven-deps:latest"
+        docker build -t restaurant-maven-deps:latest -f "${ROOT_DIR}/dockerfile.maven" "${ROOT_DIR}"
+      fi
+      build_and_push "restaurant-backend" "${ROOT_DIR}/Dockerfile" "${ROOT_DIR}"
+      ;;
+    frontend)
+      build_and_push "restaurant-frontend" "${ROOT_DIR}/front/Dockerfile" "${ROOT_DIR}/front"
+      ;;
+    e2e)
+      build_and_push "restaurant-e2e" "${ROOT_DIR}/front/Dockerfile.e2e" "${ROOT_DIR}/front"
+      ;;
+    *)
+      echo "Unknown target: $target (expected: backend, frontend, e2e)" >&2
+      exit 1
+      ;;
+  esac
+done
+
+echo "==> Done. Version: ${VERSION}"

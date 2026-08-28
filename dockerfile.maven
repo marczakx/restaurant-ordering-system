@@ -1,0 +1,19 @@
+# Intermediate Maven image with pre-downloaded dependencies
+# Build once: docker build -t restaurant-maven-deps:latest -f dockerfile.maven .
+# Rebuild only when pom.xml changes.
+#
+# This image serves as a cache layer for Maven dependencies.
+# The main Dockerfile uses it as a base, so as long as pom.xml
+# doesn't change, this layer is reused from Docker cache.
+
+FROM maven:3.9-eclipse-temurin-17-alpine
+
+WORKDIR /app
+
+# Copy only the files needed for dependency resolution
+COPY mvnw ./
+COPY .mvn .mvn
+COPY pom.xml ./
+
+# Download all project dependencies into the local Maven repository
+RUN mvn dependency:go-offline -B

@@ -12,7 +12,8 @@ public class WebSocketConfiguration implements WebSocketMessageBrokerConfigurer 
 
   @Override
   public void registerStompEndpoints(StompEndpointRegistry stompEndpointRegistry) {
-    stompEndpointRegistry.addEndpoint("ws").setAllowedOrigins("*");
+    stompEndpointRegistry.addEndpoint("ws")
+        .setAllowedOrigins("http://localhost:4200", "http://localhost:8082", "http://localhost:8081");
   }
 
   @Override

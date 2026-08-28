@@ -26,7 +26,7 @@ public class OrderItem {
 
   int quantity;
 
-  @OneToMany(cascade = CascadeType.MERGE)
+  @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
   @JoinColumn(name = "order_item_id")
-  Set<AdditionOrderItem> additoinOrderItems = new HashSet<>();
+  Set<AdditionOrderItem> additionOrderItems = new HashSet<>();
 }

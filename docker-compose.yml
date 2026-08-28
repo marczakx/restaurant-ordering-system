@@ -1,0 +1,97 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_DB=restaurant
+      - POSTGRES_USER=restaurant
+      - POSTGRES_PASSWORD=restaurant
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - restaurant-network
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.3
+    # Stable hostname so the embedded H2 database can resolve it (AUTO_SERVER),
+    # and --import-realm to provision the "restaurant" realm on first start.
+    hostname: keycloak
+    command: start-dev --import-realm
+    environment:
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+    volumes:
+      - ./keycloak:/opt/keycloak/data/import:ro
+    ports:
+      # Host port 8090 (8080 is often taken by other local services);
+      # containers reach Keycloak via http://keycloak:8080 inside the network.
+      - "8090:8080"
+    networks:
+      - restaurant-network
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/restaurant
+      - SPRING_DATASOURCE_DRIVERCLASSNAME=org.postgresql.Driver
+      - SPRING_DATASOURCE_USERNAME=restaurant
+      - SPRING_DATASOURCE_PASSWORD=restaurant
+      - SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=org.hibernate.dialect.PostgreSQLDialect
+    depends_on:
+      - db
+    networks:
+      - restaurant-network
+
+  frontend:
+    build:
+      context: ./front
+      dockerfile: Dockerfile
+    ports:
+      - "8082:80"
+    depends_on:
+      - backend
+      - keycloak
+    networks:
+      - restaurant-network
+
+  e2e-tests:
+    image: cypress/browsers:latest
+    working_dir: /e2e
+    volumes:
+      - ./front:/e2e
+      - cypress_cache:/root/.cache/Cypress
+    depends_on:
+      - frontend
+    networks:
+      - restaurant-network
+    ports:
+      - "9222:9222"
+    command: sh -c "npm install --legacy-peer-deps && npx cypress install && npx cypress run --browser chrome --config baseUrl=http://frontend:80"
+
+  integration-tests:
+    image: maven:3.9-eclipse-temurin-17-alpine
+    working_dir: /app
+    volumes:
+      - .:/app
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      # Let Testcontainers resolve mapped ports via the docker host gateway,
+      # required because the JVM itself runs inside a container.
+      - TESTCONTAINERS_HOST_OVERRIDE=host.docker.internal
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - backend
+    command: sh -c "./mvnw test"
+
+networks:
+  restaurant-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  cypress_cache:

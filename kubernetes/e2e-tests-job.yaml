@@ -1,0 +1,62 @@
+# E2E tests (Cypress) run as a Job inside the cluster.
+#
+# The tests execute against the in-cluster frontend service
+# (http://frontend:80), so no ingress or LoadBalancer access is required.
+#
+# Build and push the runner image first (see scripts/build-and-push.sh):
+#   ./scripts/build-and-push.sh e2e
+#
+# Run manually:
+#   kubectl delete job e2e-tests -n restaurant --ignore-not-found=true
+#   kubectl apply -f kubernetes/e2e-tests-job.yaml
+#   kubectl wait --for=condition=complete --timeout=15m job/e2e-tests -n restaurant
+#   kubectl logs job/e2e-tests -n restaurant
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: e2e-tests
+  namespace: restaurant
+  labels:
+    app: restaurant-e2e-tests
+spec:
+  backoffLimit: 1
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app: restaurant-e2e-tests
+    spec:
+      restartPolicy: Never
+      initContainers:
+        # Wait until the frontend (and everything behind it) responds before starting Cypress
+        - name: wait-for-frontend
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - until wget -q -O /dev/null http://frontend:80; do echo "waiting for frontend..."; sleep 3; done
+      containers:
+        - name: cypress
+          image: marczakx/restaurant-e2e:1.0.1
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: CYPRESS_BASE_URL
+              value: http://frontend:80
+          resources:
+            # Low CPU request so the Job fits on a small single-node cluster;
+            # the limit still allows bursting when the node has spare capacity.
+            requests:
+              cpu: 50m
+              memory: 512Mi
+            limits:
+              cpu: "2"
+              memory: 1Gi
+          volumeMounts:
+            # Chrome requires a larger /dev/shm than the container default (64MB)
+            - name: dshm
+              mountPath: /dev/shm
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 512Mi

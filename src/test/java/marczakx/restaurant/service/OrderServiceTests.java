@@ -2,20 +2,34 @@ package marczakx.restaurant.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 import java.util.*;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import marczakx.restaurant.model.dto.MenuItemDto;
 import marczakx.restaurant.model.entity.*;
 import marczakx.restaurant.model.entity.order.*;
+import marczakx.restaurant.repository.order.*;
 
 @ExtendWith(MockitoExtension.class)
 public class OrderServiceTests {
+
+  @Mock
+  OrderRepository orderRepository;
+
+  @Mock
+  OrderItemRepository orderRepositoryItem;
+
+  @Mock
+  AdditionOrderItemRepository additionOrderItemRepository;
 
   @InjectMocks
   OrderService orderService;
@@ -73,6 +87,34 @@ public class OrderServiceTests {
   }
 
   @Test
+  void updateStatus_ChangeToInProgress_StatusUpdated() {
+    // Given
+    Order order = getCorrectOrderWithTotalPrice183c38();
+    when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+    when(orderRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+    // When
+    Order updatedOrder = orderService.updateStatus(order.getId(), OrderStatus.IN_PROGRESS);
+
+    // Then
+    assertEquals(OrderStatus.IN_PROGRESS, updatedOrder.getStatus());
+  }
+
+  @Test
+  void updateStatus_ChangeToDone_StatusUpdated() {
+    // Given
+    Order order = getCorrectOrderWithTotalPrice183c38();
+    when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+    when(orderRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+    // When
+    Order updatedOrder = orderService.updateStatus(order.getId(), OrderStatus.DONE);
+
+    // Then
+    assertEquals(OrderStatus.DONE, updatedOrder.getStatus());
+  }
+
+  @Test
   void addItemToOrder_NewMenuItemWithoutAddition_CorrectlyAdded() {
 
     // Given
@@ -93,8 +135,60 @@ public class OrderServiceTests {
     assertEquals(33.05f, newOrderItem.getPrice(), 0.005f);
     assertEquals("New meal", newOrderItem.getMenuItem().getName());
     assertEquals(1, newOrderItem.getQuantity());
-    assertEquals(0, newOrderItem.getAdditoinOrderItems().size());
+    assertEquals(0, newOrderItem.getAdditionOrderItems().size());
 
+  }
+
+  @Test
+  void updateItemQuantity_IncreaseQuantity_QuantityUpdated() {
+    // Given
+    Order order = getCorrectOrderWithTotalPrice183c38();
+    OrderItem itemToUpdate = order.getOrderItems().stream().findFirst().orElseThrow();
+    int originalQuantity = itemToUpdate.getQuantity();
+    int newQuantity = originalQuantity + 2;
+    when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+    when(orderRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+    // When
+    Order updatedOrder = orderService.updateItemQuantity(order.getId(), itemToUpdate.getId(), newQuantity);
+    OrderItem updatedItem = updatedOrder.getOrderItems().stream()
+      .filter(oi -> oi.getId().equals(itemToUpdate.getId()))
+      .findFirst()
+      .orElseThrow();
+
+    // Then
+    assertEquals(newQuantity, updatedItem.getQuantity());
+    assertEquals(4, updatedOrder.getOrderItems().size());
+  }
+
+  @Test
+  void updateItemQuantity_SetToZero_ItemRemoved() {
+    // Given
+    Order order = getCorrectOrderWithTotalPrice183c38();
+    OrderItem itemToRemove = order.getOrderItems().stream().findFirst().orElseThrow();
+    when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+    when(orderRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+    // When
+    Order updatedOrder = orderService.updateItemQuantity(order.getId(), itemToRemove.getId(), 0);
+
+    // Then
+    assertEquals(3, updatedOrder.getOrderItems().size());
+  }
+
+  @Test
+  void removeItemFromOrder_ExistingItem_ItemRemoved() {
+    // Given
+    Order order = getCorrectOrderWithTotalPrice183c38();
+    OrderItem itemToRemove = order.getOrderItems().stream().findFirst().orElseThrow();
+    when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+    when(orderRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+    // When
+    Order updatedOrder = orderService.removeItemFromOrder(order.getId(), itemToRemove.getId());
+
+    // Then
+    assertEquals(3, updatedOrder.getOrderItems().size());
   }
 
   @Test
@@ -119,7 +213,7 @@ public class OrderServiceTests {
     assertEquals(33.05f, newOrderItem.getPrice(), 0.005f);
     assertEquals("New meal", newOrderItem.getMenuItem().getName());
     assertEquals(1, newOrderItem.getQuantity());
-    assertEquals(2, newOrderItem.getAdditoinOrderItems().size());
+    assertEquals(2, newOrderItem.getAdditionOrderItems().size());
 
   }
 
@@ -134,7 +228,7 @@ public class OrderServiceTests {
       OrderItem.builder().id(103L).menuItem(meal3).price(32f).quantity(4).build(),
       OrderItem.builder().id(104L).menuItem(meal4).price(35.35f).quantity(1).build()
     ));
-    return Order.builder().id(1l).orderItems(orderItems).build();
+    return Order.builder().id(1l).orderItems(orderItems).status(OrderStatus.TO_DO).build();
   }
 
   private Order getCorrectOrderWithAddition_Price30c18() {
@@ -142,9 +236,9 @@ public class OrderServiceTests {
     Set<AdditionOrderItem> additionOrderItems = Set.of(AdditionOrderItem.builder().price(0.05f).build());
     Set<OrderItem> orderItems = new HashSet<>(Set.of(
       OrderItem.builder().id(101L).menuItem(meal).price(10.01f)
-        .additoinOrderItems(additionOrderItems).quantity(3).build()
+        .additionOrderItems(additionOrderItems).quantity(3).build()
     ));
-    return Order.builder().id(1l).orderItems(orderItems).build();
+    return Order.builder().id(1l).orderItems(orderItems).status(OrderStatus.TO_DO).build();
   }
 
   private Order getOrderWithUnsetPrice() {
@@ -158,6 +252,6 @@ public class OrderServiceTests {
       OrderItem.builder().id(103L).menuItem(meal3).price(32f).quantity(4).build(),
       OrderItem.builder().id(104L).menuItem(meal4).price(35.35f).quantity(1).build()
     );
-    return Order.builder().id(1l).orderItems(orderItems).build();
+    return Order.builder().id(1l).orderItems(orderItems).status(OrderStatus.TO_DO).build();
   }
 }

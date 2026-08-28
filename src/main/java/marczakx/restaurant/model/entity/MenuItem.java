@@ -32,9 +32,16 @@ public class MenuItem {
 
   @JsonIgnore
   @ManyToMany
+  @JoinTable(name = "menu_item__menu_item_type",
+    joinColumns = {@JoinColumn(name = "menu_item_id")},
+    inverseJoinColumns = {@JoinColumn(name = "menu_item_type_id")})
+  private Set<MenuItemType> menuItemType = new HashSet<>();
+
+  @JsonIgnore
+  @ManyToMany
   @JoinTable(name = "menu_item__addition",
     joinColumns = {@JoinColumn(name = "menu_item_id")},
     inverseJoinColumns = {@JoinColumn(name = "addition_id")})
-  Set<Addition> additions = new HashSet<>();
+  private Set<Addition> additions = new HashSet<>();
 
 }
