@@ -1,0 +1,12 @@
+# Build outputs
+target
+
+# Version control & IDE
+.git
+.idea
+*.iml
+.vscode
+*.swp
+
+# OS files
+.DS_Store

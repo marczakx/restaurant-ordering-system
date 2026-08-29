@@ -12,6 +12,28 @@ services:
     networks:
       - restaurant-network
 
+  # Kafka – the backend publishes order events to the "order-events" topic;
+  # the notification service consumes them and broadcasts to the frontend
+  # over WebSocket.
+  kafka:
+    image: apache/kafka:3.7.0
+    environment:
+      - KAFKA_NODE_ID=1
+      - KAFKA_PROCESS_ROLES=controller,broker
+      - KAFKA_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1
+      - KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS=0
+    ports:
+      - "9092:9092"
+    networks:
+      - restaurant-network
+
   keycloak:
     image: quay.io/keycloak/keycloak:24.0.3
     # Stable hostname so the embedded H2 database can resolve it (AUTO_SERVER),
@@ -29,6 +51,7 @@ services:
       - "8090:8080"
     networks:
       - restaurant-network
+
   backend:
     build:
       context: .
@@ -41,6 +64,7 @@ services:
       - SPRING_DATASOURCE_USERNAME=restaurant
       - SPRING_DATASOURCE_PASSWORD=restaurant
       - SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=org.hibernate.dialect.PostgreSQLDialect
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
     env_file:
       # Google OAuth credentials are kept OUTSIDE this repository.
       # Create ~/.config/restaurant/secrets.env with GOOGLE_CLIENT_ID /
@@ -50,6 +74,25 @@ services:
         required: false
     depends_on:
       - db
+      - kafka
+    networks:
+      - restaurant-network
+
+  # Intermediary service between backend and frontend. It consumes order
+  # events from Kafka (published by the backend) and broadcasts them to the
+  # frontend over WebSocket (STOMP).
+  notification-service:
+    build:
+      context: ./notification-service
+      dockerfile: Dockerfile
+    ports:
+      - "8083:8083"
+    environment:
+      - SERVER_PORT=8083
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    depends_on:
+      - kafka
+      - backend
     networks:
       - restaurant-network
 
@@ -77,6 +120,7 @@ services:
       - angular
       - backend
       - keycloak
+      - notification-service
     networks:
       - restaurant-network
 
@@ -109,6 +153,7 @@ services:
     ports:
       - "9876:9876"
     command: sh -c "npm install --legacy-peer-deps && npx ng test --karma-config=karma-ci.conf.js --browsers=ChromeHeadlessNoSandbox"
+
   e2e-tests:
     image: cypress/browsers:latest
     working_dir: /e2e
@@ -128,6 +173,9 @@ services:
     working_dir: /app
     volumes:
       - .:/app
+      # Share the Maven repository between runs so dependencies are
+      # downloaded only once instead of on every test execution.
+      - maven_cache:/root/.m2
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       # Let Testcontainers resolve mapped ports via the docker host gateway,
@@ -139,6 +187,19 @@ services:
       - backend
     command: sh -c "./mvnw test"
 
+  # Unit tests for the notification-service (Kafka consumer + WebSocket
+  # broadcaster). Runs in a Maven container so no local JDK is required.
+  # Depends on nothing: the tests are unit tests using Mockito.
+  notification-service-tests:
+    image: maven:3.9-eclipse-temurin-17-alpine
+    working_dir: /app
+    volumes:
+      - ./notification-service:/app
+      # Share the Maven repository between runs so dependencies are
+      # downloaded only once instead of on every test execution.
+      - maven_cache:/root/.m2
+    command: sh -c "mvn test"
+
 networks:
   restaurant-network:
     driver: bridge
@@ -146,3 +207,7 @@ networks:
 volumes:
   postgres_data:
   cypress_cache:
+  # Shared Maven repository cache for the integration-tests and
+  # notification-service-tests containers – avoids re-downloading all
+  # dependencies on every test run.
+  maven_cache:

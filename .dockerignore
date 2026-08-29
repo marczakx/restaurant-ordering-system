@@ -1,0 +1,23 @@
+# Build outputs
+**/target
+**/node_modules
+**/dist
+
+# Version control & IDE
+.git
+.idea
+*.iml
+.vscode
+*.swp
+
+# Local configuration
+*.env
+~/.config
+
+# Test & coverage output
+**/coverage
+front/cypress/screenshots
+front/cypress/videos
+
+# OS files
+.DS_Store
