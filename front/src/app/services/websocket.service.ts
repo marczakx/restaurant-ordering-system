@@ -4,18 +4,19 @@ import { Observable, Subject } from 'rxjs';
 import { Order } from '../models/models';
 
 /**
- * Service that connects to the backend STOMP/WebSocket endpoint and
- * exposes a stream of order updates.
+ * Service that connects to the notification service STOMP/WebSocket endpoint
+ * and exposes a stream of order updates.
  *
- * The backend broadcasts the full {@link Order} object to the "/order"
- * topic every time an order is created, updated, or has items changed.
- * This service lets components subscribe to those real-time updates so
- * the UI stays in sync without manual refresh.
+ * The backend publishes order events to Kafka. The notification service
+ * consumes them and broadcasts the full {@link Order} object to the "/order"
+ * STOMP topic. This service lets components subscribe to those real-time
+ * updates so the UI stays in sync without manual refresh.
  *
- * The backend uses Spring's STOMP message broker, so this service speaks
- * the STOMP protocol directly over a native WebSocket: it sends a CONNECT
- * frame, subscribes to the "/order" destination after the CONNECTED reply,
- * and parses incoming MESSAGE frames into {@link Order} objects.
+ * The notification service uses Spring's STOMP message broker, so this
+ * service speaks the STOMP protocol directly over a native WebSocket: it
+ * sends a CONNECT frame, subscribes to the "/order" destination after the
+ * CONNECTED reply, and parses incoming MESSAGE frames into {@link Order}
+ * objects.
  */
 @Injectable({
   providedIn: 'root'
@@ -23,29 +24,37 @@ import { Order } from '../models/models';
 export class WebsocketService {
   private socket: WebSocket | null = null;
   private orderUpdates$ = new Subject<Order>();
-  private connected = false;
   private platformId = inject(PLATFORM_ID);
 
   /**
    * Connects to the STOMP endpoint and subscribes to the "/order" topic.
-   * Safe to call multiple times – subsequent calls are no-ops when already
-   * connected.
+   * Safe to call multiple times – subsequent calls are no-ops when the
+   * underlying WebSocket is already in OPEN/CONNECTING state.
    */
   connect(): void {
     if (!isPlatformBrowser(this.platformId)) {
       return;
     }
-    if (this.connected) {
+    // Don't open a second WebSocket while one is already open or connecting.
+    if (this.socket &&
+        (this.socket.readyState === WebSocket.OPEN ||
+         this.socket.readyState === WebSocket.CONNECTING)) {
       return;
     }
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
+    // Build WebSocket URL using relative path to ensure it works in Docker Compose
+    const wsUrl = `${window.location.protocol}//${window.location.host}/ws`;
 
-    this.socket = new WebSocket(wsUrl);
-    this.connected = true;
+    try {
+      this.socket = new WebSocket(wsUrl);
+    } catch (e) {
+      console.error('Failed to create WebSocket:', e);
+      this.socket = null;
+      return;
+    }
 
     this.socket.onopen = () => {
+      console.log('WebSocket connected');
       // Start the STOMP session. The host header must match the HTTP host
       // the browser used to reach the SPA.
       this.sendFrame('CONNECT', {
@@ -60,12 +69,10 @@ export class WebsocketService {
 
     this.socket.onerror = (err) => {
       console.error('WebSocket error:', err);
-      this.connected = false;
-      this.socket = null;
     };
 
     this.socket.onclose = () => {
-      this.connected = false;
+      console.log('WebSocket closed');
       this.socket = null;
     };
   }
@@ -80,15 +87,20 @@ export class WebsocketService {
 
   /**
    * Disconnects from the WebSocket and completes the order update stream.
+   * After calling this, the next {@link #connect()} will create a fresh
+   * stream – the existing {@link #getOrderUpdates()} Observable, however,
+   * keeps its (now completed) reference, so callers should re-subscribe
+   * through a freshly injected service instance.
    */
   disconnect(): void {
     if (this.socket) {
-      this.socket.close();
+      try {
+        this.socket.close();
+      } catch (e) {
+        console.error('Error while closing WebSocket:', e);
+      }
       this.socket = null;
     }
-    this.connected = false;
-    this.orderUpdates$.complete();
-    this.orderUpdates$ = new Subject<Order>();
   }
 
   /**

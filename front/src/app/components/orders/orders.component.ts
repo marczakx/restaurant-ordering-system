@@ -48,12 +48,16 @@ export class OrdersComponent implements OnInit, OnDestroy {
   /**
    * Updates the local orders list with a real-time order update received
    * via WebSocket. If the order already exists it is replaced in place;
-   * otherwise it is appended to the list.
+   * otherwise it is appended to the list. Uses an immutable replacement of
+   * the matched element so Angular change detection reliably re-renders the
+   * affected card.
    */
   updateOrderInList(order: Order) {
     const index = this.orders.findIndex(o => o.id === order.id);
     if (index !== -1) {
-      this.orders[index] = order;
+      // Replace with a new array reference so *ngFor detects the change
+      // and re-renders the card, even when the order was already in the list.
+      this.orders = this.orders.map((o, i) => (i === index ? order : o));
     } else {
       this.orders = [...this.orders, order];
     }
