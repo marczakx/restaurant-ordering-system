@@ -1,26 +1,12 @@
 describe('Order Layouts E2E Tests', () => {
   beforeEach(() => {
-    // Login via Keycloak (proxied by the frontend nginx under /keycloak)
-    // since /orders is protected by authGuard
-    cy.visit('/');
-    cy.get('input[name="username"]').type('demo');
-    cy.get('input[name="password"]').type('demo');
-    cy.request({
-      method: 'POST',
-      url: '/keycloak/realms/restaurant/protocol/openid-connect/token',
-      form: true,
-      body: {
-        grant_type: 'password',
-        client_id: 'restaurant-client',
-        username: 'demo',
-        password: 'demo'
-      }
-    }).then((response) => {
-      window.localStorage.setItem('auth_token', response.body.access_token);
-      cy.visit('/menu');
-      cy.reload();
-      cy.wait(2000);
-    });
+    // loginViaKeycloak stores both the access token and the realm
+    // roles extracted from the JWT, so any role-gated UI is rendered
+    // consistently across the suite.
+    cy.loginViaKeycloak('demo', 'demo');
+    cy.visit('/menu');
+    cy.reload();
+    cy.wait(2000);
   });
 
   function goToOrders() {
@@ -87,13 +73,16 @@ describe('Order Layouts E2E Tests', () => {
       const $sourceColumn = $columns.eq(sourceIndex);
       const orderId = $sourceColumn.find('.board-card .board-order-id').first().text().trim();
 
-      // Simulate HTML5 drag & drop: dragstart on the card, then dragover + drop on the Done column
+      // Simulate HTML5 drag & drop. The drop handler is bound to the
+      // .board-cards container of the destination column, so we must
+      // target that exact element. { force: true } bypasses the
+      // actionability check (the empty "Gotowe" column is essentially
+      // zero-height, which would otherwise make its .board-cards
+      // unclickable in headless mode).
       cy.wrap($sourceColumn.find('.board-card').first()).trigger('dragstart');
-      cy.get('.board-column')
-        .eq(2)
-        .find('.board-cards')
-        .trigger('dragover')
-        .trigger('drop');
+      cy.get('.board-column').eq(2).find('.board-cards')
+        .trigger('dragover', { force: true })
+        .trigger('drop', { force: true });
       cy.wait(2000);
 
       // The dragged order should now be rendered inside the "Gotowe" column
