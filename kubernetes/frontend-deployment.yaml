@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: marczakx/restaurant-frontend:e61ec88b
+        image: marczakx/restaurant-frontend:937a25d3
         imagePullPolicy: Always
         ports:
         - containerPort: 80
