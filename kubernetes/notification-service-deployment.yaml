@@ -1,0 +1,38 @@
+# Notification service: consumes order events from Kafka and broadcasts them
+# to the frontend over WebSocket (STOMP). Mirrors the docker-compose service.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+  namespace: restaurant
+  labels:
+    app: notification-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+    spec:
+      containers:
+      - name: notification-service
+        image: marczakx/notification-service:937a25d3
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8083
+        env:
+        - name: SERVER_PORT
+          value: "8083"
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          value: "kafka:9092"
+        # No CPU request – the single-node AKS cluster is already at 99%
+        # CPU usage. BestEffort/QoS lets the scheduler place the pod
+        # without further admission rejections; the limit still caps
+        # bursts so the JVM cannot starve the rest of the node.
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
