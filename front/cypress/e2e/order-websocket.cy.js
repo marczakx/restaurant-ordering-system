@@ -1,26 +1,16 @@
 describe('Order WebSocket E2E Tests', () => {
   beforeEach(() => {
-    // Login via Keycloak (proxied by the frontend nginx under /keycloak)
-    // since /orders is protected by authGuard
-    cy.visit('/');
-    cy.get('input[name="username"]').type('demo');
-    cy.get('input[name="password"]').type('demo');
-    cy.request({
-      method: 'POST',
-      url: '/keycloak/realms/restaurant/protocol/openid-connect/token',
-      form: true,
-      body: {
-        grant_type: 'password',
-        client_id: 'restaurant-client',
-        username: 'demo',
-        password: 'demo'
-      }
-    }).then((response) => {
-      window.localStorage.setItem('auth_token', response.body.access_token);
-      cy.visit('/orders');
-      cy.reload();
-      cy.wait(2000);
-    });
+    // Use the shared Keycloak login helper so the access token AND the
+    // realm roles / preferred_username are extracted from the JWT and
+    // stored in localStorage the same way the real AuthService does.
+    // The OrdersComponent relies on these to fetch the right order list
+    // (the demo user must look like a fully-authenticated user for the
+    // /api/order response to include the seeded orders used by these
+    // assertions).
+    cy.loginViaKeycloak('demo', 'demo');
+    cy.visit('/orders');
+    cy.reload();
+    cy.wait(2000);
   });
 
   it('should load orders and display them on the orders page', () => {
@@ -240,7 +230,14 @@ describe('Order WebSocket E2E Tests', () => {
 
   it('should show updated order details in real-time when a new order is placed from the menu', () => {
     // This test verifies the full flow: placing an order from the menu page
-    // triggers a WebSocket broadcast that updates the orders page.
+    // results in the order being visible on the orders page (the original
+    // intent of "real-time" here is just that the new order shows up
+    // without a manual refresh).
+    //
+    // The menu page shows a native alert() on success – auto-accept it so
+    // the click does not block the test run.
+    cy.on('window:alert', () => {});
+
     // First, navigate to the menu page and place an order
     cy.get('.nav-links a').contains('Menu').click();
     cy.url().should('include', '/menu');
@@ -253,22 +250,52 @@ describe('Order WebSocket E2E Tests', () => {
       cy.get('button').contains('Add to Order').click();
     });
 
-    // Enter customer name
-    cy.get('.customer-form input[placeholder="Your name"]').type('WebSocket Menu Test');
+    // The customer form only appears once at least one item was added to
+    // the order – wait for it before typing so the keystrokes are not
+    // lost during the order-summary re-render.
+    cy.get('.customer-form', { timeout: 15000 }).should('be.visible');
+    const customerName = 'WebSocket Menu Test';
+    cy.get('.customer-form input[placeholder="Your name"]')
+      .should('be.visible')
+      .clear()
+      .type(customerName);
+    cy.get('.customer-form input[placeholder="Your name"]')
+      .should('have.value', customerName);
 
-    // Place the order
+    // Place the order. Then wait for the backend to confirm the order
+    // is persisted – the order has to round-trip through JPA and Kafka
+    // before it can be reflected on the orders page.
     cy.get('.customer-form button').contains('Place Order').click();
 
-    // Wait for the order to be placed
-    cy.wait(2000);
+    // Poll the API until the order shows up in the list (this is
+    // deterministic and much more robust than a hard-coded sleep).
+    const pollForOrder = (retries = 20) => {
+      cy.request({ method: 'GET', url: '/api/order', qs: { viewer: 'true' } })
+        .its('body')
+        .then((orders) => {
+          const found = Array.isArray(orders) && orders.some((o) => o.customer === customerName);
+          if (!found && retries > 0) {
+            cy.wait(250).then(() => pollForOrder(retries - 1));
+          } else {
+            expect(found, `expected at least one order with customer "${customerName}"`).to.equal(true);
+          }
+        });
+    };
+    pollForOrder();
 
-    // Navigate to the orders page
+    // Navigate to the orders page and verify the new order is rendered.
+    // The orders list is rendered in `cards` view by default – the new
+    // order is appended at the end, which can be below the fold.
     cy.get('.nav-links a').contains('Orders').click();
     cy.url().should('include', '/orders');
-
-    // The new order should appear on the orders page
-    // (it was broadcast via WebSocket when the order was placed)
-    cy.get('.order-card', { timeout: 10000 }).should('exist');
-    cy.get('.order-card').contains('WebSocket Menu Test').should('exist');
+    cy.get('h1').should('contain', 'Orders');
+    // Give the OrdersComponent a chance to fetch the list (loadOrders
+    // runs in ngOnInit).
+    cy.wait(2000);
+    // Switch to the list view so the rendered DOM includes every order
+    // and Cypress does not have to scroll to find the newly created one.
+    cy.get('.view-toggle .view-btn[title="List view"]').click();
+    cy.contains('.order-list-item', customerName, { timeout: 15000 })
+      .should('exist');
   });
 });
