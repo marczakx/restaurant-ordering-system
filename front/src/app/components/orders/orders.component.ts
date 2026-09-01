@@ -68,13 +68,16 @@ export class OrdersComponent implements OnInit, OnDestroy {
   /**
    * Fetches the orders visible to the logged-in user. Users with the
    * {@code order-viewer} role (e.g. managers) see every order; everyone
-   * else only sees the orders placed by themselves. The backend matches
-   * the {@code customer} query parameter against the {@code customer}
-   * field on each order.
+   * else only sees the orders placed by themselves. The Keycloak JWT
+   * is not validated server-side yet, so the SPA forwards both the
+   * role claim ({@code viewer=true}) and the username
+   * ({@code customer=<name>}) to the backend, which uses them to scope
+   * the response.
    */
   loadOrders() {
-    const customer = this.canViewAllOrders() ? null : this.authService.getUsername();
-    this.orderService.getAllOrders(customer).subscribe(orders => {
+    const isViewer = this.canViewAllOrders();
+    const customer = isViewer ? null : this.authService.getUsername();
+    this.orderService.getAllOrders(customer, isViewer).subscribe(orders => {
       this.orders = orders;
     });
   }

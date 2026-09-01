@@ -16,17 +16,20 @@ export class OrderService {
   }
 
   /**
-   * Fetches the orders visible to the caller. Users without the
-   * {@code order-viewer} role only see their own orders, so the
-   * {@code customer} query parameter is sent as the current user's name
-   * (or email) and the backend matches it against the order's
-   * {@code customer} field. Managers / order viewers pass {@code null}
-   * to ask for the full list.
+   * Fetches the orders visible to the caller. Users with the
+   * {@code order-viewer} role receive every order; everyone else only
+   * sees their own. The Keycloak JWT is not validated server-side
+   * yet (see SecurityConfig), so the SPA forwards the role claim
+   * ({@code viewer=true}) and the username ({@code customer=<name>})
+   * explicitly to the backend.
    */
-  getAllOrders(customer: string | null): Observable<Order[]> {
+  getAllOrders(customer: string | null, isViewer: boolean): Observable<Order[]> {
     let params = new HttpParams();
     if (customer) {
       params = params.set('customer', customer);
+    }
+    if (isViewer) {
+      params = params.set('viewer', 'true');
     }
     return this.http.get<Order[]>(this.apiUrl, { params });
   }

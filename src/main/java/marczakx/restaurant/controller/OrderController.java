@@ -43,27 +43,35 @@ public class OrderController {
   }
 
   /**
-   * Lists orders visible to the caller. Two pieces of information are
-   * consulted:
+   * Lists orders visible to the caller. The visibility decision is
+   * driven by two pieces of information:
    * <ul>
-   *   <li>The Spring Security authentication context - used to detect
-   *       the {@code order-viewer} role for users who logged in via the
-   *       backend OAuth2 flow (e.g. Google). Anonymous authentications
-   *       are treated as "no special role".</li>
-   *   <li>The optional {@code customer} query parameter - sent by the
-   *       SPA from the Keycloak JWT and used both to scope the result
-   *       to the caller's own orders and to seed the username when no
-   *       backend session exists.</li>
+   *   <li>The Spring Security authentication - used to detect the
+   *       {@code order-viewer} role for users who logged in via the
+   *       backend OAuth2 flow (e.g. Google).</li>
+   *   <li>The optional {@code viewer}/{@code customer} query
+   *       parameters sent by the SPA from the Keycloak JWT. The
+   *       Keycloak access token is not validated server-side yet (see
+   *       {@link marczakx.restaurant.configuration.SecurityConfig}),
+   *       so the SPA is trusted to relay these claims. {@code viewer}
+   *       is set when the JWT carries the {@code order-viewer} realm
+   *       role; {@code customer} is the Keycloak
+   *       {@code preferred_username} used to scope the result for
+   *       non-viewers.</li>
    * </ul>
-   * When the caller does not have the {@code order-viewer} role the
-   * result is restricted to orders whose {@code customer} field matches
-   * the resolved username. When the caller has the role the full list
-   * is returned.
+   * When the caller has the viewer privilege (either by a backend
+   * OAuth2 role or the SPA's {@code viewer} flag) the full list is
+   * returned. Everyone else gets orders whose {@code customer} field
+   * matches the resolved username, or nothing when no username is
+   * available.
    */
   @GetMapping
-  public List<Order> getAll(@RequestParam(value = "customer", required = false) String customer) {
+  public List<Order> getAll(
+      @RequestParam(value = "customer", required = false) String customer,
+      @RequestParam(value = "viewer", required = false) Boolean viewer) {
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-    boolean canViewAllOrders = hasRole(authentication, ORDER_VIEWER_ROLE);
+    boolean canViewAllOrders = hasRole(authentication, ORDER_VIEWER_ROLE)
+        || Boolean.TRUE.equals(viewer);
     String username = resolveUsername(authentication, customer);
     return orderService.findAll(canViewAllOrders, username);
   }

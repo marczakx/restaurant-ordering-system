@@ -46,6 +46,10 @@ describe('OrdersComponent', () => {
       'removeItem'
     ]);
     orderServiceSpy.getAllOrders.and.returnValue(of(mockOrders));
+    // Ignore the new (customer, isViewer) parameters when the spec
+    // spies on getAllOrders - the production call still happens with
+    // real values, the spy just returns a canned response.
+    orderServiceSpy.getAllOrders.and.callFake(() => of(mockOrders));
     orderServiceSpy.updateItemQuantity.and.returnValue(of(mockOrder));
     orderServiceSpy.updateStatus.and.returnValue(of(mockOrder));
     orderServiceSpy.removeItem.and.returnValue(of(mockOrder));
