@@ -2,7 +2,10 @@ package marczakx.restaurant.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.*;
@@ -76,11 +79,11 @@ public class OrderServiceTests {
 
   @Test
   void calculateTotalPrice_OrderIsNullpointer__ExceptionThrown() {
-		
+
     // Given
     Order order = null;
-		
-    // When 
+
+    // When
     // Then
     assertThrows(NullPointerException.class, () -> orderService.calculateTotalPrice(order));
 
@@ -207,7 +210,7 @@ public class OrderServiceTests {
       .filter(e -> e.getMenuItem().getId().equals(newMenuItem.id()))
       .findAny()
       .orElseThrow();
-  
+
     // Then
     assertEquals(5, actualOrder.getOrderItems().size());
     assertEquals(33.05f, newOrderItem.getPrice(), 0.005f);
@@ -215,6 +218,72 @@ public class OrderServiceTests {
     assertEquals(1, newOrderItem.getQuantity());
     assertEquals(2, newOrderItem.getAdditionOrderItems().size());
 
+  }
+
+  @Test
+  void findAll_WithOrderViewerRole_ReturnsEveryOrder() {
+    // Given
+    Order order1 = getCorrectOrderWithTotalPrice183c38();
+    Order order2 = getCorrectOrderWithAddition_Price30c18();
+    when(orderRepository.findAll()).thenReturn(List.of(order1, order2));
+
+    // When
+    List<Order> result = orderService.findAll(true, "manager");
+
+    // Then - the viewer role short-circuits to findAll(), no per-customer lookup
+    assertEquals(2, result.size());
+    verify(orderRepository).findAll();
+    verify(orderRepository, never()).findByCustomer(any());
+  }
+
+  @Test
+  void findAll_WithOrderViewerRole_IgnoresUsername() {
+    // Given
+    when(orderRepository.findAll()).thenReturn(List.of(getCorrectOrderWithTotalPrice183c38()));
+
+    // When - even with a blank username the viewer still sees everything
+    orderService.findAll(true, null);
+
+    // Then
+    verify(orderRepository).findAll();
+    verify(orderRepository, never()).findByCustomer(any());
+  }
+
+  @Test
+  void findAll_WithoutOrderViewerRole_ReturnsOnlyCallerOrders() {
+    // Given
+    Order ownOrder = Order.builder().id(1L).customer("alice").build();
+    when(orderRepository.findByCustomer("alice")).thenReturn(List.of(ownOrder));
+
+    // When
+    List<Order> result = orderService.findAll(false, "alice");
+
+    // Then - non-viewers are scoped to their own orders
+    assertEquals(1, result.size());
+    assertEquals(ownOrder, result.get(0));
+    verify(orderRepository).findByCustomer("alice");
+    verify(orderRepository, never()).findAll();
+  }
+
+  @Test
+  void findAll_WithoutOrderViewerRole_NoUsername_ReturnsEmptyList() {
+    // Given - anonymous caller that cannot view all orders
+
+    // When
+    List<Order> result = orderService.findAll(false, null);
+
+    // Then - nothing is leaked to anonymous callers
+    assertTrue(result.isEmpty());
+    verify(orderRepository, never()).findAll();
+    verify(orderRepository, never()).findByCustomer(any());
+  }
+
+  @Test
+  void findAll_WithoutOrderViewerRole_BlankUsername_ReturnsEmptyList() {
+    // When / Then
+    assertTrue(orderService.findAll(false, "").isEmpty());
+    assertTrue(orderService.findAll(false, "   ").isEmpty());
+    verify(orderRepository, never()).findByCustomer(any());
   }
 
   private Order getCorrectOrderWithTotalPrice183c38() {

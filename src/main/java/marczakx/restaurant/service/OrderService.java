@@ -30,8 +30,42 @@ public class OrderService {
     return order;
   }
 
+  /**
+   * Returns all orders in the system. Kept for callers that already know
+   * they have the {@code order-viewer} privilege (e.g. background jobs or
+   * tests). Web endpoints should use
+   * {@link #findAll(boolean, String)} instead so the result is scoped to
+   * the caller's own orders when they lack the privilege.
+   */
   public List<Order> findAll() {
     return orderRepository.findAll();
+  }
+
+  /**
+   * Returns the list of orders the caller is allowed to see.
+   *
+   * <p>Users with the {@code order-viewer} privilege (e.g. managers) get
+   * the full list. Everyone else only sees the orders they placed
+   * themselves (matched by the {@code customer} field against the
+   * supplied {@code username}). When the caller is anonymous
+   * ({@code username} is {@code null} or blank) and they cannot see all
+   * orders, the result is empty rather than leaking every order in the
+   * system.
+   *
+   * @param canViewAllOrders {@code true} when the caller holds the
+   *                          {@code order-viewer} role.
+   * @param username         the authenticated principal name, used to
+   *                          scope the result when {@code canViewAllOrders}
+   *                          is {@code false}.
+   */
+  public List<Order> findAll(boolean canViewAllOrders, String username) {
+    if (canViewAllOrders) {
+      return orderRepository.findAll();
+    }
+    if (username == null || username.isBlank()) {
+      return List.of();
+    }
+    return orderRepository.findByCustomer(username);
   }
 
   @Transactional

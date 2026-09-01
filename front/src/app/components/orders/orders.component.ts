@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { OrderService } from '../../services/order.service';
 import { WebsocketService } from '../../services/websocket.service';
+import { AuthService } from '../../services/auth.service';
 import { Order, OrderStatus } from '../../models/models';
 
 @Component({
@@ -29,7 +30,8 @@ export class OrdersComponent implements OnInit, OnDestroy {
 
   constructor(
     private orderService: OrderService,
-    private websocketService: WebsocketService
+    private websocketService: WebsocketService,
+    private authService: AuthService
   ) {}
 
   ngOnInit() {
@@ -63,10 +65,26 @@ export class OrdersComponent implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * Fetches the orders visible to the logged-in user. Users with the
+   * {@code order-viewer} role (e.g. managers) see every order; everyone
+   * else only sees the orders placed by themselves. The backend matches
+   * the {@code customer} query parameter against the {@code customer}
+   * field on each order.
+   */
   loadOrders() {
-    this.orderService.getAllOrders().subscribe(orders => {
+    const customer = this.canViewAllOrders() ? null : this.authService.getUsername();
+    this.orderService.getAllOrders(customer).subscribe(orders => {
       this.orders = orders;
     });
+  }
+
+  /**
+   * Whether the logged-in user is allowed to see every order
+   * regardless of who placed it.
+   */
+  canViewAllOrders(): boolean {
+    return this.authService.hasRole('order-viewer');
   }
 
   setViewMode(mode: 'cards' | 'list' | 'classic' | 'table' | 'board' | 'compact') {

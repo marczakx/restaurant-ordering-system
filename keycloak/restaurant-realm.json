@@ -10,6 +10,10 @@
       {
         "name": "menu-creator",
         "description": "Can add new menu items"
+      },
+      {
+        "name": "order-viewer",
+        "description": "Can view all orders regardless of who placed them"
       }
     ]
   },
@@ -76,6 +80,22 @@
         }
       ],
       "realmRoles": ["menu-creator"]
+    },
+    {
+      "username": "manager",
+      "enabled": true,
+      "email": "manager@restaurant.local",
+      "emailVerified": true,
+      "firstName": "Order",
+      "lastName": "Manager",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "manager",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["order-viewer"]
     }
   ]
 }
