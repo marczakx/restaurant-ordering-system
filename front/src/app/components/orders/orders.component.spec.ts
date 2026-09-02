@@ -3,6 +3,7 @@ import { of, Subject } from 'rxjs';
 import { OrdersComponent } from './orders.component';
 import { OrderService } from '../../services/order.service';
 import { WebsocketService } from '../../services/websocket.service';
+import { AuthService } from '../../services/auth.service';
 import { Order, OrderItem, OrderStatus } from '../../models/models';
 
 describe('OrdersComponent', () => {
@@ -10,6 +11,7 @@ describe('OrdersComponent', () => {
   let fixture: ComponentFixture<OrdersComponent>;
   let orderServiceSpy: jasmine.SpyObj<OrderService>;
   let websocketServiceSpy: jasmine.SpyObj<WebsocketService>;
+  let authServiceSpy: jasmine.SpyObj<AuthService>;
   let orderUpdatesSubject: Subject<Order>;
 
   const mockOrderItem: OrderItem = {
@@ -61,11 +63,23 @@ describe('OrdersComponent', () => {
     ]);
     websocketServiceSpy.getOrderUpdates.and.returnValue(orderUpdatesSubject.asObservable());
 
+    // AuthService is a constructor dependency of OrdersComponent; the real
+    // service needs HttpClient, so we substitute a spy to keep the test
+    // hermetic (no Angular HTTP setup required for these unit tests).
+    authServiceSpy = jasmine.createSpyObj('AuthService', [
+      'hasRole', 'getUsername', 'isLoggedIn', 'getRoles', 'getUserId'
+    ]);
+    // The default user is NOT a viewer, matching the existing assertions
+    // that only the customer's own orders are fetched.
+    authServiceSpy.hasRole.and.returnValue(false);
+    authServiceSpy.getUsername.and.returnValue('John Doe');
+
     await TestBed.configureTestingModule({
       imports: [OrdersComponent],
       providers: [
         { provide: OrderService, useValue: orderServiceSpy },
-        { provide: WebsocketService, useValue: websocketServiceSpy }
+        { provide: WebsocketService, useValue: websocketServiceSpy },
+        { provide: AuthService, useValue: authServiceSpy }
       ]
     }).compileComponents();
 

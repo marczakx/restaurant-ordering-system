@@ -58,10 +58,11 @@ describe('MenuComponent', () => {
       'updateStatus',
       'removeItem'
     ]);
-    authServiceSpy = jasmine.createSpyObj('AuthService', ['hasRole', 'getRoles', 'getUsername', 'isLoggedIn']);
+    authServiceSpy = jasmine.createSpyObj('AuthService', ['hasRole', 'getRoles', 'getUsername', 'isLoggedIn', 'getUserId']);
     // By default the user has both menu roles so the existing tests cover
     // the full UI; role-specific behaviour is asserted in dedicated tests.
     authServiceSpy.hasRole.and.returnValue(true);
+    authServiceSpy.getUserId.and.returnValue(null);
 
     menuServiceSpy.getCuisines.and.returnValue(of(mockCuisines));
     menuServiceSpy.getMenuItemTypes.and.returnValue(of(mockMenuTypes));

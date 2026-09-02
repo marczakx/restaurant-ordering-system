@@ -1,5 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { PLATFORM_ID } from '@angular/core';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { WebsocketService } from './websocket.service';
 import { Order } from '../models/models';
 
@@ -15,7 +17,14 @@ describe('WebsocketService', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }]
+      // WebsocketService injects AuthService, which in turn needs HttpClient.
+      // The testing HTTP client intercepts any real request the service
+      // would make, keeping the spec hermetic.
+      providers: [
+        { provide: PLATFORM_ID, useValue: 'browser' },
+        provideHttpClient(),
+        provideHttpClientTesting()
+      ]
     });
     service = TestBed.inject(WebsocketService);
   });
@@ -32,7 +41,11 @@ describe('WebsocketService', () => {
   it('should not connect when not in browser platform', () => {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
-      providers: [{ provide: PLATFORM_ID, useValue: 'node' }]
+      providers: [
+        { provide: PLATFORM_ID, useValue: 'node' },
+        provideHttpClient(),
+        provideHttpClientTesting()
+      ]
     });
     const nodeService = TestBed.inject(WebsocketService);
     nodeService.connect();
