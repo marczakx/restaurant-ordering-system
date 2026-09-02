@@ -2,6 +2,7 @@ import { Injectable, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Observable, Subject } from 'rxjs';
 import { Order } from '../models/models';
+import { AuthService } from './auth.service';
 
 /**
  * Service that connects to the notification service STOMP/WebSocket endpoint
@@ -17,6 +18,16 @@ import { Order } from '../models/models';
  * sends a CONNECT frame, subscribes to the "/order" destination after the
  * CONNECTED reply, and parses incoming MESSAGE frames into {@link Order}
  * objects.
+ *
+ * Authentication: the WebSocket handshake cannot carry custom HTTP headers
+ * from the browser, so the bearer token is appended to the URL as
+ * {@code ?access_token=...}. The edge nginx (see front/nginx.conf) reads
+ * the query parameter, copies it into the {@code Authorization} header and
+ * validates it with the auth-service before proxying the upgrade to the
+ * notification-service. Users who logged in via the Google OAuth2 flow
+ * (session-based) instead of the Keycloak password flow do not have a
+ * token in localStorage; the WebSocket is opened without one and the
+ * auth-service will return 401, causing the WebSocket to close.
  */
 @Injectable({
   providedIn: 'root'
@@ -25,6 +36,7 @@ export class WebsocketService {
   private socket: WebSocket | null = null;
   private orderUpdates$ = new Subject<Order>();
   private platformId = inject(PLATFORM_ID);
+  private authService = inject(AuthService);
 
   /**
    * Connects to the STOMP endpoint and subscribes to the "/order" topic.
@@ -43,7 +55,11 @@ export class WebsocketService {
     }
 
     // Build WebSocket URL using relative path to ensure it works in Docker Compose
-    const wsUrl = `${window.location.protocol}//${window.location.host}/ws`;
+    // and Kubernetes. The bearer token (if any) is passed as ?access_token=
+    // because browsers cannot set custom headers on the WebSocket handshake.
+    const token = this.authService.getToken();
+    const baseUrl = `${window.location.protocol}//${window.location.host}/ws`;
+    const wsUrl = token ? `${baseUrl}?access_token=${encodeURIComponent(token)}` : baseUrl;
 
     try {
       this.socket = new WebSocket(wsUrl);
