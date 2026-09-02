@@ -96,6 +96,28 @@ services:
     networks:
       - restaurant-network
 
+  # Token introspection service called by the nginx auth_request subrequest.
+  # Validates Keycloak bearer tokens and forwards the resolved user identity
+  # to the upstream application via response headers (X-User, X-User-Id,
+  # X-Roles). See /auth-service and front/nginx.conf.
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    ports:
+      - "8084:8084"
+    environment:
+      - SERVER_PORT=8084
+      # Use the in-network hostname so the auth-service reaches Keycloak
+      # through the Docker network rather than localhost.
+      - KEYCLOAK_INTROSPECTION_URL=http://keycloak:8080/realms/restaurant/protocol/openid-connect/token/introspect
+      - KEYCLOAK_INTROSPECTION_CLIENT_ID=restaurant-backend
+      - KEYCLOAK_INTROSPECTION_CLIENT_SECRET=restaurant-backend-secret
+    depends_on:
+      - keycloak
+    networks:
+      - restaurant-network
+
   # Angular SPA tier – serves the static bundle internally on port 4200.
   # Not exposed to the host; all traffic enters through the nginx proxy.
   angular:
@@ -118,6 +140,7 @@ services:
       - "8082:80"
     depends_on:
       - angular
+      - auth-service
       - backend
       - keycloak
       - notification-service
@@ -197,6 +220,16 @@ services:
       - ./notification-service:/app
       # Share the Maven repository between runs so dependencies are
       # downloaded only once instead of on every test execution.
+      - maven_cache:/root/.m2
+    command: sh -c "mvn test"
+
+  # Unit tests for the auth-service (Keycloak introspection controller).
+  # Same setup as notification-service-tests.
+  auth-service-tests:
+    image: maven:3.9-eclipse-temurin-17-alpine
+    working_dir: /app
+    volumes:
+      - ./auth-service:/app
       - maven_cache:/root/.m2
     command: sh -c "mvn test"
 

@@ -1,12 +1,11 @@
-package marczakx.restaurant.service;
+package marczakx.auth.service;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import marczakx.restaurant.configuration.KeycloakIntrospectionProperties;
+import marczakx.auth.configuration.KeycloakIntrospectionProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
@@ -22,12 +21,11 @@ import java.util.Objects;
 /**
  * Wraps the Keycloak token introspection endpoint (RFC 7662).
  * <p>
- * The backend does NOT trust the JWT that the browser sends directly. Instead
- * it forwards the bearer token to Keycloak, which returns whether the token
- * is still active together with the user and role claims. This service is
- * the only place that talks to Keycloak's introspection endpoint; controllers
- * should depend on {@link #introspect(String)} and not call Keycloak
- * themselves.
+ * The auth-service does NOT trust the JWT that the browser sends directly.
+ * Instead it forwards the bearer token to Keycloak, which returns whether the
+ * token is still active together with the user and role claims. This service
+ * is the only place that talks to Keycloak's introspection endpoint; controllers
+ * should depend on {@link #introspect(String)} and not call Keycloak themselves.
  * <p>
  * The HTTP client is created lazily and configured with the connect/read
  * timeouts from {@link KeycloakIntrospectionProperties} so a slow Keycloak

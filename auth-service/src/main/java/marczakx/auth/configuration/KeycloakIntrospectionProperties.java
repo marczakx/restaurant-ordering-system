@@ -1,10 +1,10 @@
-package marczakx.restaurant.configuration;
+package marczakx.auth.configuration;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
  * Configuration for calling the Keycloak token introspection endpoint
- * (RFC 7662) from the backend. Bound from the {@code keycloak.introspection.*}
+ * (RFC 7662) from the auth-service. Bound from the {@code keycloak.introspection.*}
  * properties in application.properties.
  */
 @ConfigurationProperties(prefix = "keycloak.introspection")
