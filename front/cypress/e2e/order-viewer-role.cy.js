@@ -19,7 +19,7 @@ describe('Order Viewer Role E2E Tests', () => {
     if (cachedMenuItem) {
       return cy.wrap(cachedMenuItem);
     }
-    return cy.request('/api/menu/items').then((response) => {
+    return cy.apiRequest('/api/menu/items').then((response) => {
       cachedMenuItem = response.body[0];
       return cachedMenuItem;
     });
@@ -59,7 +59,7 @@ describe('Order Viewer Role E2E Tests', () => {
         userId: userId,
         status: 'TO_DO'
       };
-      return cy.request('PUT', '/api/order', order);
+      return cy.apiRequest('PUT', '/api/order', order);
     });
   }
 
@@ -123,7 +123,7 @@ describe('Order Viewer Role E2E Tests', () => {
       const demoId = currentUserId();
       placeOrderForUser('someone-else-sub', 'someone-else');
 
-      cy.request(`/api/order?userId=${demoId}`).then((response) => {
+      cy.apiRequest(`/api/order?userId=${demoId}`).then((response) => {
         expect(response.status).to.eq(200);
         const customers = response.body.map((o) => o.customer);
         expect(customers).to.not.include('someone-else');
@@ -133,7 +133,7 @@ describe('Order Viewer Role E2E Tests', () => {
     it('should return nothing when neither ?userId nor ?viewer is provided', () => {
       // Without any scoping parameter the backend cannot tell who is
       // calling and must not leak the full order list to non-viewers.
-      cy.request('/api/order').then((response) => {
+      cy.apiRequest('/api/order').then((response) => {
         expect(response.status).to.eq(200);
         expect(response.body).to.deep.equal([]);
       });
@@ -186,7 +186,7 @@ describe('Order Viewer Role E2E Tests', () => {
       placeOrderForUser('alice-viewer-sub', 'alice-viewer-test');
       placeOrderForUser('bob-viewer-sub', 'bob-viewer-test');
 
-      cy.request('/api/order?viewer=true').then((response) => {
+      cy.apiRequest('/api/order?viewer=true').then((response) => {
         expect(response.status).to.eq(200);
         const customers = response.body.map((o) => o.customer);
         // Both seeded customers should be present - the viewer
@@ -208,7 +208,7 @@ describe('Order Viewer Role E2E Tests', () => {
       // order-viewer role. They must not see demo's order.
       cy.loginViaKeycloak('editor', 'editor');
       const editorId = currentUserId();
-      cy.request(`/api/order?userId=${editorId}`).then((response) => {
+      cy.apiRequest(`/api/order?userId=${editorId}`).then((response) => {
         expect(response.status).to.eq(200);
         const customers = response.body.map((o) => o.customer);
         expect(customers).to.not.include('demo');

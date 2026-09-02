@@ -50,3 +50,57 @@ Cypress.Commands.add('loginViaKeycloak', (username, password, clientId = 'restau
     }
   });
 });
+
+/**
+ * Drop-in replacement for cy.request that automatically attaches the
+ * Keycloak bearer token to every request that targets the protected
+ * /api/* and /ws endpoints. cy.request does not forward the browser's
+ * Authorization header automatically, and overriding cy.request itself
+ * is not supported by Cypress, so we expose a dedicated command and use
+ * it in the e2e specs.
+ *
+ * Accepts the same signatures as cy.request:
+ *   cy.apiRequest(url)
+ *   cy.apiRequest(url, options)
+ *   cy.apiRequest(method, url)
+ *   cy.apiRequest(method, url, body)
+ *   cy.apiRequest(options)
+ */
+Cypress.Commands.add('apiRequest', (...args) => {
+  let opts;
+  if (args.length === 1) {
+    const arg = args[0];
+    opts = typeof arg === 'string' ? { url: arg } : { ...arg };
+  } else if (args.length >= 2) {
+    opts = { method: args[0], url: args[1] };
+    if (args.length >= 3 && args[2] !== undefined && args[2] !== null) {
+      opts.body = args[2];
+    }
+  }
+
+  const url = opts.url || '';
+  const needsAuth = (url.startsWith('/api') || url.startsWith('/ws')) &&
+                    !opts.headers?.Authorization;
+  if (needsAuth) {
+    const token = window.localStorage.getItem('auth_token');
+    if (token) {
+      opts.headers = { ...(opts.headers || {}), Authorization: `Bearer ${token}` };
+    }
+  }
+  return cy.request(opts);
+});
+
+/**
+ * Global beforeEach hook that guarantees the SPA is reloaded with a
+ * valid token in localStorage BEFORE any spec starts. The Angular
+ * AuthService is a singleton that reads the bearer token once in its
+ * constructor; because cy.visit() to a same-origin path does not
+ * always force a real reload, the interceptor would otherwise see an
+ * outdated `this.token` value and omit the Authorization header, which
+ * nginx then answers with a 401. Performing a full reload here makes
+ * the AuthService pick up whatever login state the spec set up.
+ */
+beforeEach(() => {
+  cy.visit('/', { failOnStatusCode: false });
+  cy.reload();
+});

@@ -27,7 +27,7 @@ describe('Google Login E2E Tests', () => {
     // The authorization endpoint must hand the browser over to Google's
     // consent screen with our client id and a callback URI that points
     // back to the same origin the user is browsing (port included).
-    cy.request({
+    cy.apiRequest({
       url: '/oauth2/authorization/google',
       followRedirect: false,
     }).then((response) => {
@@ -42,7 +42,7 @@ describe('Google Login E2E Tests', () => {
   it('should report the session as unauthenticated without an OAuth2 login', () => {
     // The SPA callback relies on this endpoint to detect a completed
     // Google login; without a backend session it must answer false.
-    cy.request('/api/auth/status').then((response) => {
+    cy.apiRequest('/api/auth/status').then((response) => {
       expect(response.status).to.eq(200);
       expect(response.body.authenticated).to.eq(false);
     });
@@ -52,12 +52,12 @@ describe('Google Login E2E Tests', () => {
     // Follow the exact redirect chain a real browser walks through after
     // clicking the button (Cypress cannot navigate cross-origin itself):
     //   /api/auth/google -> /oauth2/authorization/google -> accounts.google.com
-    cy.request({
+    cy.apiRequest({
       url: '/api/auth/google',
       followRedirect: false,
     }).then((first) => {
       expect(first.status).to.eq(302);
-      return cy.request({
+      return cy.apiRequest({
         url: first.headers.location,
         followRedirect: false,
       });

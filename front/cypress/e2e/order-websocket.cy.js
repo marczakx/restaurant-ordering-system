@@ -26,7 +26,7 @@ describe('Order WebSocket E2E Tests', () => {
       // Place a new order via the REST API. The backend broadcasts the
       // saved order to the "/order" WebSocket topic, and the OrdersComponent
       // should receive it and append it to the list in real time.
-      cy.request({
+      cy.apiRequest({
         method: 'PUT',
         url: '/api/order',
         body: {
@@ -56,7 +56,7 @@ describe('Order WebSocket E2E Tests', () => {
         // Change the status via the REST API. The backend broadcasts the
         // updated order to the "/order" WebSocket topic, and the
         // OrdersComponent should receive it and update the badge in real time.
-        cy.request({
+        cy.apiRequest({
           method: 'PUT',
           url: `/api/order/${orderId}/status`,
           body: '"IN_PROGRESS"',
@@ -75,7 +75,7 @@ describe('Order WebSocket E2E Tests', () => {
       cy.get('h3').invoke('text').then((text) => {
         const orderId = text.match(/#(\d+)/)[1];
 
-        cy.request({
+        cy.apiRequest({
           method: 'PUT',
           url: `/api/order/${orderId}/status`,
           body: '"DONE"',
@@ -93,7 +93,7 @@ describe('Order WebSocket E2E Tests', () => {
       cy.get('h3').invoke('text').then((text) => {
         const orderId = text.match(/#(\d+)/)[1];
 
-        cy.request({
+        cy.apiRequest({
           method: 'PUT',
           url: `/api/order/${orderId}/status`,
           body: '"TO_DO"',
@@ -135,14 +135,14 @@ describe('Order WebSocket E2E Tests', () => {
       // We need to get the item ID from the DOM. The order item doesn't
       // expose its ID directly in the HTML, so we'll use the API to
       // get the order details and find an item ID.
-      cy.request('GET', `/api/order/${targetOrderId}`).then((response) => {
+      cy.apiRequest('GET', `/api/order/${targetOrderId}`).then((response) => {
         const order = response.body;
         if (order.orderItems && order.orderItems.length > 0) {
           targetItemId = order.orderItems[0].id;
 
           // Update the item quantity via the REST API. The backend broadcasts
           // the updated order to the "/order" WebSocket topic.
-          cy.request({
+          cy.apiRequest({
             method: 'PUT',
             url: `/api/order/${targetOrderId}/items/${targetItemId}/quantity?quantity=5`
           });
@@ -177,7 +177,7 @@ describe('Order WebSocket E2E Tests', () => {
       const orderId = orderIdText.match(/#(\d+)/)[1];
 
       // Get the order details to find an item ID
-      cy.request('GET', `/api/order/${orderId}`).then((response) => {
+      cy.apiRequest('GET', `/api/order/${orderId}`).then((response) => {
         const order = response.body;
         if (order.orderItems && order.orderItems.length > 0) {
           const itemId = order.orderItems[0].id;
@@ -185,7 +185,7 @@ describe('Order WebSocket E2E Tests', () => {
 
           // Remove the item via the REST API. The backend broadcasts the
           // updated order to the "/order" WebSocket topic.
-          cy.request({
+          cy.apiRequest({
             method: 'DELETE',
             url: `/api/order/${orderId}/items/${itemId}`
           });
@@ -206,7 +206,7 @@ describe('Order WebSocket E2E Tests', () => {
         const orderId = text.match(/#(\d+)/)[1];
 
         // First, set status to IN_PROGRESS via API
-        cy.request({
+        cy.apiRequest({
           method: 'PUT',
           url: `/api/order/${orderId}/status`,
           body: '"IN_PROGRESS"',
@@ -216,7 +216,7 @@ describe('Order WebSocket E2E Tests', () => {
         cy.get('.status-badge').should('contain', 'W trakcie');
 
         // Then, set status to DONE via API
-        cy.request({
+        cy.apiRequest({
           method: 'PUT',
           url: `/api/order/${orderId}/status`,
           body: '"DONE"',
@@ -270,7 +270,7 @@ describe('Order WebSocket E2E Tests', () => {
     // Poll the API until the order shows up in the list (this is
     // deterministic and much more robust than a hard-coded sleep).
     const pollForOrder = (retries = 20) => {
-      cy.request({ method: 'GET', url: '/api/order', qs: { viewer: 'true' } })
+      cy.apiRequest({ method: 'GET', url: '/api/order', qs: { viewer: 'true' } })
         .its('body')
         .then((orders) => {
           const found = Array.isArray(orders) && orders.some((o) => o.customer === customerName);

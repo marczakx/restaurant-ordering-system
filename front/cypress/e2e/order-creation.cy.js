@@ -5,7 +5,7 @@ describe('Order Creation E2E Tests', () => {
     cy.visit('/');
     cy.get('input[name="username"]').type('demo');
     cy.get('input[name="password"]').type('demo');
-    cy.request({
+    cy.apiRequest({
       method: 'POST',
       url: '/keycloak/realms/restaurant/protocol/openid-connect/token',
       form: true,
