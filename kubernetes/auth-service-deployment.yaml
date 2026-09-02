@@ -1,0 +1,67 @@
+# Token introspection service called by the nginx auth_request subrequest.
+# Validates Keycloak bearer tokens and forwards the resolved user identity
+# to the upstream application via response headers (X-User, X-User-Id,
+# X-Roles). Mirrors the docker-compose service.
+#
+# Uses the same image the docker-compose stack uses (marczakx/auth-service)
+# so docker compose and minikube stay in sync – one binary, two runtime
+# topologies.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  namespace: restaurant
+  labels:
+    app: auth-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-service
+  template:
+    metadata:
+      labels:
+        app: auth-service
+    spec:
+      containers:
+      - name: auth-service
+        # Same image as docker-compose (uses marczakx/auth-service:1.0.3 –
+        # there is no separate kubernetes tag yet because this service was
+        # added after the initial commit and no later release exists).
+        image: marczakx/auth-service:1.0.3
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8084
+        env:
+        - name: SERVER_PORT
+          value: "8084"
+        # Reach Keycloak through the in-cluster service. The realm
+        # client secret lives in the application.properties baked into
+        # the image (this is the same value docker-compose passes via env).
+        - name: KEYCLOAK_INTROSPECTION_URL
+          value: "http://keycloak:8080/realms/restaurant/protocol/openid-connect/token/introspect"
+        - name: KEYCLOAK_INTROSPECTION_CLIENT_ID
+          value: "restaurant-backend"
+        - name: KEYCLOAK_INTROSPECTION_CLIENT_SECRET
+          value: "restaurant-backend-secret"
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+  namespace: restaurant
+  labels:
+    app: auth-service
+spec:
+  selector:
+    app: auth-service
+  ports:
+    - name: http
+      port: 8084
+      targetPort: 8084
+      protocol: TCP
+  type: ClusterIP
