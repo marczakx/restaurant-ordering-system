@@ -1,9 +1,12 @@
 package marczakx.restaurant.controller;
 
 import marczakx.restaurant.configuration.SecurityConfig;
+import marczakx.restaurant.service.KeycloakIntrospectionService;
+import marczakx.restaurant.service.KeycloakIntrospectionService.IntrospectionResult;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -17,14 +20,21 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Slice test for the auth status endpoint used by the SPA callback after
- * the Google OAuth2 login. Uses the real SecurityConfig so the reported
- * authentication state matches production behaviour.
+ * Slice test for the auth endpoints used by the SPA callback after the
+ * Google OAuth2 login and by the nginx auth_request subrequest. Uses the
+ * real SecurityConfig so the reported authentication state matches
+ * production behaviour, and mocks the Keycloak introspection service so
+ * the tests stay hermetic and do not require a running Keycloak.
  */
 @WebMvcTest(AuthController.class)
 @Import(SecurityConfig.class)
@@ -32,6 +42,11 @@ class AuthControllerTests {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @MockBean
+    private KeycloakIntrospectionService introspectionService;
+
+    // ----- /api/auth/status (existing behaviour) -----
 
     @Test
     void shouldReportUnauthenticatedWithoutOAuth2Session() throws Exception {
@@ -123,6 +138,88 @@ class AuthControllerTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.authenticated").value(true))
                 .andExpect(jsonPath("$.username").value("1234567890"));
+    }
+
+    // ----- /api/auth/internal/verify (nginx auth_request) -----
+
+    @Test
+    void shouldReturn401WhenAuthorizationHeaderIsMissing() throws Exception {
+        mockMvc.perform(get("/api/auth/internal/verify"))
+                .andExpect(status().isUnauthorized());
+        verify(introspectionService, never()).introspect(any());
+    }
+
+    @Test
+    void shouldReturn401WhenAuthorizationHeaderIsNotBearer() throws Exception {
+        mockMvc.perform(get("/api/auth/internal/verify")
+                        .header("Authorization", "Basic dXNlcjpwYXNz"))
+                .andExpect(status().isUnauthorized());
+        verify(introspectionService, never()).introspect(any());
+    }
+
+    @Test
+    void shouldReturn401WhenTokenIsInactive() throws Exception {
+        when(introspectionService.introspect("expired-token"))
+                .thenReturn(IntrospectionResult.inactive());
+        mockMvc.perform(get("/api/auth/internal/verify")
+                        .header("Authorization", "Bearer expired-token"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void shouldReturn200AndUserHeadersWhenTokenIsActiveAndNoRoleRequired() throws Exception {
+        when(introspectionService.introspect("good-token"))
+                .thenReturn(IntrospectionResult.of(true, "demo", "user-123", List.of("menu-editor", "order-viewer")));
+        mockMvc.perform(get("/api/auth/internal/verify")
+                        .header("Authorization", "Bearer good-token"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("X-User", "demo"))
+                .andExpect(header().string("X-User-Id", "user-123"))
+                .andExpect(header().string("X-Roles", "menu-editor,order-viewer"));
+    }
+
+    @Test
+    void shouldReturn200WhenRequiredRoleMatches() throws Exception {
+        when(introspectionService.introspect("admin-token"))
+                .thenReturn(IntrospectionResult.of(true, "admin", "user-admin", List.of("admin", "menu-editor")));
+        mockMvc.perform(get("/api/auth/internal/verify")
+                        .param("required", "admin")
+                        .header("Authorization", "Bearer admin-token"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("X-User", "admin"));
+    }
+
+    @Test
+    void shouldReturn403WhenRequiredRoleIsMissing() throws Exception {
+        when(introspectionService.introspect("viewer-token"))
+                .thenReturn(IntrospectionResult.of(true, "manager", "user-mgr", List.of("order-viewer")));
+        mockMvc.perform(get("/api/auth/internal/verify")
+                        .param("required", "admin")
+                        .header("Authorization", "Bearer viewer-token"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void shouldReturn200ForSuperadminRegardlessOfRequiredRole() throws Exception {
+        when(introspectionService.introspect("super-token"))
+                .thenReturn(IntrospectionResult.of(true, "root", "user-root", List.of("superadmin")));
+        mockMvc.perform(get("/api/auth/internal/verify")
+                        .param("required", "admin")
+                        .header("Authorization", "Bearer super-token"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("X-User", "root"));
+    }
+
+    @Test
+    void shouldReturn200WithEmptyHeadersWhenIntrospectionResultHasNoUser() throws Exception {
+        when(introspectionService.introspect("anon-token"))
+                .thenReturn(IntrospectionResult.of(true, null, null, List.of()));
+        mockMvc.perform(get("/api/auth/internal/verify")
+                        .header("Authorization", "Bearer anon-token"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("X-User", ""))
+                .andExpect(header().string("X-User-Id", ""))
+                .andExpect(header().string("X-Roles", ""));
     }
 
     /**

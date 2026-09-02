@@ -14,6 +14,14 @@
       {
         "name": "order-viewer",
         "description": "Can view all orders regardless of who placed them"
+      },
+      {
+        "name": "admin",
+        "description": "Administrator: can access the Keycloak admin console and other sensitive endpoints"
+      },
+      {
+        "name": "superadmin",
+        "description": "Super administrator: inherits the admin role and is allowed to access the Keycloak admin console"
       }
     ]
   },
@@ -30,6 +38,20 @@
       "webOrigins": ["*"],
       "defaultClientScopes": ["web-origins", "acr", "profile", "roles", "email"],
       "optionalClientScopes": ["address", "phone", "offline_access", "microprofile-jwt"]
+    },
+    {
+      "clientId": "restaurant-backend",
+      "name": "Restaurant Backend",
+      "description": "Confidential client used by the backend to introspect bearer tokens via the Keycloak token introspection endpoint (RFC 7662). Called by the nginx auth_request subrequest.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "restaurant-backend-secret",
+      "bearerOnly": false,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "defaultClientScopes": ["web-origins", "profile", "roles", "email"]
     }
   ],
   "users": [
@@ -96,6 +118,38 @@
         }
       ],
       "realmRoles": ["order-viewer"]
+    },
+    {
+      "username": "admin",
+      "enabled": true,
+      "email": "admin@restaurant.local",
+      "emailVerified": true,
+      "firstName": "Site",
+      "lastName": "Admin",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["admin"]
+    },
+    {
+      "username": "superadmin",
+      "enabled": true,
+      "email": "superadmin@restaurant.local",
+      "emailVerified": true,
+      "firstName": "Site",
+      "lastName": "Superadmin",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "superadmin",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["superadmin"]
     }
   ]
 }
