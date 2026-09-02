@@ -52,10 +52,11 @@ services:
     networks:
       - restaurant-network
 
+  # Same image the Kubernetes deployment uses (the "937a25d3" tag mirrors
+  # the commit hash so docker compose and minikube run the exact same
+  # backend binary – no "works on my machine" surprises).
   backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: marczakx/restaurant-backend:937a25d3
     ports:
       - "8081:8080"
     environment:
@@ -80,11 +81,10 @@ services:
 
   # Intermediary service between backend and frontend. It consumes order
   # events from Kafka (published by the backend) and broadcasts them to the
-  # frontend over WebSocket (STOMP).
+  # frontend over WebSocket (STOMP). Uses the same image tag as the
+  # Kubernetes deployment.
   notification-service:
-    build:
-      context: ./notification-service
-      dockerfile: Dockerfile
+    image: marczakx/notification-service:937a25d3
     ports:
       - "8083:8083"
     environment:
@@ -99,11 +99,11 @@ services:
   # Token introspection service called by the nginx auth_request subrequest.
   # Validates Keycloak bearer tokens and forwards the resolved user identity
   # to the upstream application via response headers (X-User, X-User-Id,
-  # X-Roles). See /auth-service and front/nginx.conf.
+  # X-Roles). See /auth-service and front/nginx.conf. Uses the same image
+  # we publish for the standalone auth-service so docker compose and
+  # minikube stay in sync.
   auth-service:
-    build:
-      context: ./auth-service
-      dockerfile: Dockerfile
+    image: marczakx/auth-service:1.0.3
     ports:
       - "8084:8084"
     environment:
@@ -120,10 +120,9 @@ services:
 
   # Angular SPA tier – serves the static bundle internally on port 4200.
   # Not exposed to the host; all traffic enters through the nginx proxy.
+  # Same image the Kubernetes deployment uses.
   angular:
-    build:
-      context: ./front
-      dockerfile: Dockerfile.angular
+    image: marczakx/restaurant-angular:937a25d3
     depends_on:
       - backend
     networks:
@@ -131,11 +130,10 @@ services:
 
   # Nginx edge/proxy tier – the single entry point exposed on :8082.
   # Serves nothing itself: forwards / to the Angular service and proxies
-  # /api, /ws, /oauth2 to the backend and /keycloak to Keycloak.
+  # /api, /ws, /oauth2 to the backend and /keycloak to Keycloak. Same
+  # image as the Kubernetes deployment.
   frontend:
-    build:
-      context: ./front
-      dockerfile: Dockerfile.nginx
+    image: marczakx/restaurant-frontend:937a25d3
     ports:
       - "8082:80"
     depends_on:
@@ -177,6 +175,9 @@ services:
       - "9876:9876"
     command: sh -c "npm install --legacy-peer-deps && npx ng test --karma-config=karma-ci.conf.js --browsers=ChromeHeadlessNoSandbox"
 
+  # Same image the Kubernetes e2e-tests job uses (cypress/browsers
+  # already contains the browser + Cypress, the source tree is mounted
+  # in so any test edits on the host are picked up immediately).
   e2e-tests:
     image: cypress/browsers:latest
     working_dir: /e2e
