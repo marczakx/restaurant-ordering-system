@@ -1,0 +1,50 @@
+# Run frontend (Angular/Karma) unit tests as a Kubernetes Job.
+#
+# Run the matching image build first:
+#   docker build -t restaurant-frontend-unit-tests:local \
+#     -f kubernetes/frontend-unit-tests.Dockerfile .
+#   minikube image load restaurant-frontend-unit-tests:local
+#
+# Apply / observe:
+#   kubectl --context <ctx> -n restaurant delete job frontend-unit-tests --ignore-not-found=true
+#   kubectl --context <ctx> -n restaurant apply -f kubernetes/frontend-unit-tests-job.yaml
+#   kubectl --context <ctx> -n restaurant wait --for=condition=complete --timeout=20m job/frontend-unit-tests
+#   kubectl --context <ctx> -n restaurant logs job/frontend-unit-tests
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: frontend-unit-tests
+  namespace: restaurant
+  labels:
+    app: restaurant-frontend-unit-tests
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app: restaurant-frontend-unit-tests
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: tests
+          image: marczakx/restaurant-frontend-unit-tests:1.0.3-6b0f7e3d
+          imagePullPolicy: Always
+          # Chrome requires a larger /dev/shm than the container default
+          # (64MB) – mirror the docker-compose setup so the headless
+          # browser does not crash under load.
+          resources:
+            requests:
+              cpu: 0
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 3Gi
+          volumeMounts:
+            - name: dshm
+              mountPath: /dev/shm
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 512Mi

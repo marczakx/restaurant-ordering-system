@@ -1,0 +1,57 @@
+# Run auth-service unit tests as a Kubernetes Job.
+#
+# The Job uses an init container that builds a small image containing
+# just the auth-service sources (no git dependency). The main container
+# then runs Maven against that source tree.
+#
+# Build the source image from the repository root and load it into the
+# target cluster's image registry:
+#   docker build -t restaurant-auth-service-tests:local \
+#     -f kubernetes/auth-service-tests.Dockerfile .
+#   # minikube:
+#   minikube image load restaurant-auth-service-tests:local
+#   # AKS / any other cluster:
+#   docker push <your-registry>/restaurant-auth-service-tests:local
+#   and change image: below.
+#
+# Apply / observe:
+#   kubectl --context <ctx> -n restaurant delete job auth-service-tests --ignore-not-found=true
+#   kubectl --context <ctx> -n restaurant apply -f kubernetes/auth-service-tests-job.yaml
+#   kubectl --context <ctx> -n restaurant wait --for=condition=complete --timeout=10m job/auth-service-tests
+#   kubectl --context <ctx> -n restaurant logs job/auth-service-tests
+#
+# Image: marczakx/restaurant-auth-service-tests:1.0.3-6b0f7e3d (public on
+# Docker Hub). The image is tagged with VERSION + short git commit hash
+# by scripts/run-unit-tests-k8s.sh, so use that helper to apply the Job
+# against any cluster. To run on minikube with a locally built image
+# instead, change image: above to restaurant-auth-service-tests:local
+# and set imagePullPolicy: IfNotPresent.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: auth-service-tests
+  namespace: restaurant
+  labels:
+    app: restaurant-auth-service-tests
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app: restaurant-auth-service-tests
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: tests
+          image: marczakx/restaurant-auth-service-tests:1.0.3-6b0f7e3d
+          imagePullPolicy: Always
+          command: ["mvn", "-B", "test"]
+          workingDir: /src
+          resources:
+            requests:
+              cpu: 50m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 1Gi
