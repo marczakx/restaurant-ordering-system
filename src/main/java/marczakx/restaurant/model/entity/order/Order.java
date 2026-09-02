@@ -34,6 +34,15 @@ public class Order {
 
   String customer;
 
+  /**
+   * Stable identifier of the user that placed the order. Backed by the
+   * Keycloak {@code sub} claim so the same person is matched even when
+   * their display name (see {@link #customer}) changes. {@code null}
+   * for legacy rows that pre-date the column - the repository treats
+   * those as "not owned by any known user".
+   */
+  String userId;
+
   @Enumerated(EnumType.STRING)
   @Builder.Default
   OrderStatus status = OrderStatus.TO_DO;

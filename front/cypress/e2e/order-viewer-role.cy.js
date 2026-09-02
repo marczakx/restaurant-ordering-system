@@ -1,7 +1,7 @@
 describe('Order Viewer Role E2E Tests', () => {
   /**
    * Tags every outgoing GET /api/order call with an alias so the tests
-   * can introspect the customer query parameter sent by the SPA and the
+   * can introspect the userId query parameter sent by the SPA and the
    * payload returned by the backend.
    */
   function interceptOrdersApi() {
@@ -26,13 +26,16 @@ describe('Order Viewer Role E2E Tests', () => {
   }
 
   /**
-   * Seeds the backend with an order placed by the given customer name.
-   * The order references a real menu item fetched from the API so the
-   * backend can persist it without trying to create a transient
-   * MenuItem entity. Uses the public PUT /api/order endpoint, which
-   * has no auth check on the backend, so any test can call it.
+   * Seeds the backend with an order placed by the given user. The
+   * {@code customer} field is the human-readable name used purely for
+   * display; {@code userId} is the Keycloak {@code sub} claim that the
+   * backend uses to scope order listings. The order references a real
+   * menu item fetched from the API so the backend can persist it
+   * without trying to create a transient MenuItem entity. Uses the
+   * public PUT /api/order endpoint, which has no auth check on the
+   * backend, so any test can call it.
    */
-  function placeOrderForCustomer(customerName) {
+  function placeOrderForUser(userId, customerName) {
     return getSeededMenuItem().then((menuItem) => {
       const order = {
         id: 0,
@@ -53,10 +56,20 @@ describe('Order Viewer Role E2E Tests', () => {
           }
         ],
         customer: customerName,
+        userId: userId,
         status: 'TO_DO'
       };
       return cy.request('PUT', '/api/order', order);
     });
+  }
+
+  /**
+   * Reads the Keycloak {@code sub} claim (mirrored into localStorage by
+   * the loginViaKeycloak command) for the currently logged-in user.
+   * Used to seed orders with the same id the backend will filter by.
+   */
+  function currentUserId() {
+    return window.localStorage.getItem('auth_user_id');
   }
 
   describe('Regular user without order-viewer role', () => {
@@ -67,17 +80,19 @@ describe('Order Viewer Role E2E Tests', () => {
       interceptOrdersApi();
     });
 
-    it('should send ?customer=<username> on the orders request', () => {
+    it('should send ?userId=<sub> on the orders request', () => {
+      const expectedUserId = currentUserId();
       cy.visit('/orders');
       cy.get('h1').should('contain', 'Orders');
 
       // The first /api/order request made by the SPA must carry the
-      // customer filter derived from the logged-in Keycloak username
+      // userId filter derived from the logged-in Keycloak sub claim
       // and MUST NOT include the viewer flag.
       cy.wait('@getOrders').then((interception) => {
         const url = new URL(interception.request.url, 'http://localhost');
         expect(url.pathname).to.equal('/api/order');
-        expect(url.searchParams.get('customer')).to.equal('demo');
+        expect(url.searchParams.get('userId')).to.equal(expectedUserId);
+        expect(url.searchParams.get('customer')).to.be.null;
         expect(url.searchParams.get('viewer')).to.be.null;
       });
     });
@@ -85,8 +100,9 @@ describe('Order Viewer Role E2E Tests', () => {
     it('should only see orders placed by the logged-in user', () => {
       // Seed two orders: one for the current user (demo) and one for
       // someone else. Only the demo order should reach the UI.
-      placeOrderForCustomer('demo');
-      placeOrderForCustomer('someone-else');
+      const demoId = currentUserId();
+      placeOrderForUser(demoId, 'demo');
+      placeOrderForUser('someone-else-sub', 'someone-else');
 
       cy.visit('/orders');
       cy.get('h1').should('contain', 'Orders');
@@ -104,16 +120,17 @@ describe('Order Viewer Role E2E Tests', () => {
     });
 
     it('should not leak other users orders via the API either', () => {
-      placeOrderForCustomer('someone-else');
+      const demoId = currentUserId();
+      placeOrderForUser('someone-else-sub', 'someone-else');
 
-      cy.request('/api/order?customer=demo').then((response) => {
+      cy.request(`/api/order?userId=${demoId}`).then((response) => {
         expect(response.status).to.eq(200);
         const customers = response.body.map((o) => o.customer);
         expect(customers).to.not.include('someone-else');
       });
     });
 
-    it('should return nothing when neither ?customer nor ?viewer is provided', () => {
+    it('should return nothing when neither ?userId nor ?viewer is provided', () => {
       // Without any scoping parameter the backend cannot tell who is
       // calling and must not leak the full order list to non-viewers.
       cy.request('/api/order').then((response) => {
@@ -125,7 +142,7 @@ describe('Order Viewer Role E2E Tests', () => {
 
   describe('Manager with order-viewer role', () => {
     beforeEach(() => {
-      // The new "manager" Keycloak user is granted the order-viewer
+      // The "manager" Keycloak user is granted the order-viewer
       // realm role in restaurant-realm.json. loginViaKeycloak extracts
       // the role from the JWT and mirrors it into localStorage.auth_roles
       // so canViewAllOrders() in OrdersComponent returns true.
@@ -133,7 +150,7 @@ describe('Order Viewer Role E2E Tests', () => {
       interceptOrdersApi();
     });
 
-    it('should send ?viewer=true (and no customer filter) on the orders request', () => {
+    it('should send ?viewer=true (and no userId filter) on the orders request', () => {
       cy.visit('/orders');
       cy.get('h1').should('contain', 'Orders');
 
@@ -141,15 +158,15 @@ describe('Order Viewer Role E2E Tests', () => {
         const url = new URL(interception.request.url, 'http://localhost');
         expect(url.pathname).to.equal('/api/order');
         // order-viewer must receive the full list, so the SPA signals
-        // the privilege via ?viewer=true and skips the customer filter.
+        // the privilege via ?viewer=true and skips the userId filter.
         expect(url.searchParams.get('viewer')).to.equal('true');
-        expect(url.searchParams.get('customer')).to.be.null;
+        expect(url.searchParams.get('userId')).to.be.null;
       });
     });
 
     it('should see orders placed by any customer', () => {
-      placeOrderForCustomer('alice');
-      placeOrderForCustomer('bob');
+      placeOrderForUser('alice-sub', 'alice');
+      placeOrderForUser('bob-sub', 'bob');
 
       cy.visit('/orders');
       cy.get('h1').should('contain', 'Orders');
@@ -166,14 +183,14 @@ describe('Order Viewer Role E2E Tests', () => {
     });
 
     it('should return every order from the backend when ?viewer=true', () => {
-      placeOrderForCustomer('alice-viewer-test');
-      placeOrderForCustomer('bob-viewer-test');
+      placeOrderForUser('alice-viewer-sub', 'alice-viewer-test');
+      placeOrderForUser('bob-viewer-sub', 'bob-viewer-test');
 
       cy.request('/api/order?viewer=true').then((response) => {
         expect(response.status).to.eq(200);
         const customers = response.body.map((o) => o.customer);
         // Both seeded customers should be present - the viewer
-        // bypasses the per-customer filter.
+        // bypasses the per-user filter.
         expect(customers).to.include('alice-viewer-test');
         expect(customers).to.include('bob-viewer-test');
       });
@@ -184,12 +201,14 @@ describe('Order Viewer Role E2E Tests', () => {
     it('should hide user A orders from user B when neither has order-viewer', () => {
       // User A (demo) places an order attributed to themselves
       cy.loginViaKeycloak('demo', 'demo');
-      placeOrderForCustomer('demo');
+      const demoId = currentUserId();
+      placeOrderForUser(demoId, 'demo');
 
       // Switch to user B (editor) - different Keycloak user, no
       // order-viewer role. They must not see demo's order.
       cy.loginViaKeycloak('editor', 'editor');
-      cy.request('/api/order?customer=editor').then((response) => {
+      const editorId = currentUserId();
+      cy.request(`/api/order?userId=${editorId}`).then((response) => {
         expect(response.status).to.eq(200);
         const customers = response.body.map((o) => o.customer);
         expect(customers).to.not.include('demo');

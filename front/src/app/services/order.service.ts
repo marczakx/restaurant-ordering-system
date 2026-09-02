@@ -20,13 +20,13 @@ export class OrderService {
    * {@code order-viewer} role receive every order; everyone else only
    * sees their own. The Keycloak JWT is not validated server-side
    * yet (see SecurityConfig), so the SPA forwards the role claim
-   * ({@code viewer=true}) and the username ({@code customer=<name>})
+   * ({@code viewer=true}) and the user's stable id ({@code userId=<sub>})
    * explicitly to the backend.
    */
-  getAllOrders(customer: string | null, isViewer: boolean): Observable<Order[]> {
+  getAllOrders(userId: string | null, isViewer: boolean): Observable<Order[]> {
     let params = new HttpParams();
-    if (customer) {
-      params = params.set('customer', customer);
+    if (userId) {
+      params = params.set('userId', userId);
     }
     if (isViewer) {
       params = params.set('viewer', 'true');

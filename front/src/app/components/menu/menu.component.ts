@@ -227,6 +227,10 @@ export class MenuComponent implements OnInit {
       id: 0,
       orderItems: this.orderItems,
       customer: this.customerName,
+      // Stamp the order with the Keycloak "sub" claim so the backend
+      // can scope the user's own orders list. The customer name stays
+      // the human-readable display label.
+      userId: this.authService.getUserId(),
       status: this.orderStatus
     };
 

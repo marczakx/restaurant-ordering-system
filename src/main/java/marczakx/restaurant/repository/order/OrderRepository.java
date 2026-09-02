@@ -11,11 +11,11 @@ import marczakx.restaurant.model.entity.order.Order;
 public interface OrderRepository extends JpaRepository<Order, Long> {
 
   /**
-   * Returns all orders placed by the given customer. Used to scope the
-   * order list to the authenticated user when they do not have the
-   * {@code order-viewer} realm role and therefore must not see other
-   * people's orders.
+   * Returns all orders placed by the user with the given stable id
+   * (Keycloak {@code sub} claim). Used to scope the order list to the
+   * authenticated user when they do not have the {@code order-viewer}
+   * realm role and therefore must not see other people's orders.
    */
-  List<Order> findByCustomer(String customer);
+  List<Order> findByUserId(String userId);
 
 }

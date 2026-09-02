@@ -228,45 +228,45 @@ public class OrderServiceTests {
     when(orderRepository.findAll()).thenReturn(List.of(order1, order2));
 
     // When
-    List<Order> result = orderService.findAll(true, "manager");
+    List<Order> result = orderService.findAll(true, "manager-sub");
 
-    // Then - the viewer role short-circuits to findAll(), no per-customer lookup
+    // Then - the viewer role short-circuits to findAll(), no per-user lookup
     assertEquals(2, result.size());
     verify(orderRepository).findAll();
-    verify(orderRepository, never()).findByCustomer(any());
+    verify(orderRepository, never()).findByUserId(any());
   }
 
   @Test
-  void findAll_WithOrderViewerRole_IgnoresUsername() {
+  void findAll_WithOrderViewerRole_IgnoresUserId() {
     // Given
     when(orderRepository.findAll()).thenReturn(List.of(getCorrectOrderWithTotalPrice183c38()));
 
-    // When - even with a blank username the viewer still sees everything
+    // When - even with a blank user id the viewer still sees everything
     orderService.findAll(true, null);
 
     // Then
     verify(orderRepository).findAll();
-    verify(orderRepository, never()).findByCustomer(any());
+    verify(orderRepository, never()).findByUserId(any());
   }
 
   @Test
   void findAll_WithoutOrderViewerRole_ReturnsOnlyCallerOrders() {
     // Given
-    Order ownOrder = Order.builder().id(1L).customer("alice").build();
-    when(orderRepository.findByCustomer("alice")).thenReturn(List.of(ownOrder));
+    Order ownOrder = Order.builder().id(1L).customer("alice").userId("alice-sub").build();
+    when(orderRepository.findByUserId("alice-sub")).thenReturn(List.of(ownOrder));
 
     // When
-    List<Order> result = orderService.findAll(false, "alice");
+    List<Order> result = orderService.findAll(false, "alice-sub");
 
-    // Then - non-viewers are scoped to their own orders
+    // Then - non-viewers are scoped to their own orders via the stable user id
     assertEquals(1, result.size());
     assertEquals(ownOrder, result.get(0));
-    verify(orderRepository).findByCustomer("alice");
+    verify(orderRepository).findByUserId("alice-sub");
     verify(orderRepository, never()).findAll();
   }
 
   @Test
-  void findAll_WithoutOrderViewerRole_NoUsername_ReturnsEmptyList() {
+  void findAll_WithoutOrderViewerRole_NoUserId_ReturnsEmptyList() {
     // Given - anonymous caller that cannot view all orders
 
     // When
@@ -275,15 +275,15 @@ public class OrderServiceTests {
     // Then - nothing is leaked to anonymous callers
     assertTrue(result.isEmpty());
     verify(orderRepository, never()).findAll();
-    verify(orderRepository, never()).findByCustomer(any());
+    verify(orderRepository, never()).findByUserId(any());
   }
 
   @Test
-  void findAll_WithoutOrderViewerRole_BlankUsername_ReturnsEmptyList() {
+  void findAll_WithoutOrderViewerRole_BlankUserId_ReturnsEmptyList() {
     // When / Then
     assertTrue(orderService.findAll(false, "").isEmpty());
     assertTrue(orderService.findAll(false, "   ").isEmpty());
-    verify(orderRepository, never()).findByCustomer(any());
+    verify(orderRepository, never()).findByUserId(any());
   }
 
   private Order getCorrectOrderWithTotalPrice183c38() {

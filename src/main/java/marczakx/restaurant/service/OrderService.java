@@ -46,26 +46,26 @@ public class OrderService {
    *
    * <p>Users with the {@code order-viewer} privilege (e.g. managers) get
    * the full list. Everyone else only sees the orders they placed
-   * themselves (matched by the {@code customer} field against the
-   * supplied {@code username}). When the caller is anonymous
-   * ({@code username} is {@code null} or blank) and they cannot see all
+   * themselves (matched by the {@code userId} field against the
+   * supplied {@code userId}). When the caller is anonymous
+   * ({@code userId} is {@code null} or blank) and they cannot see all
    * orders, the result is empty rather than leaking every order in the
    * system.
    *
    * @param canViewAllOrders {@code true} when the caller holds the
    *                          {@code order-viewer} role.
-   * @param username         the authenticated principal name, used to
-   *                          scope the result when {@code canViewAllOrders}
-   *                          is {@code false}.
+   * @param userId           the authenticated user's stable id (Keycloak
+   *                          {@code sub} claim), used to scope the result
+   *                          when {@code canViewAllOrders} is {@code false}.
    */
-  public List<Order> findAll(boolean canViewAllOrders, String username) {
+  public List<Order> findAll(boolean canViewAllOrders, String userId) {
     if (canViewAllOrders) {
       return orderRepository.findAll();
     }
-    if (username == null || username.isBlank()) {
+    if (userId == null || userId.isBlank()) {
       return List.of();
     }
-    return orderRepository.findByCustomer(username);
+    return orderRepository.findByUserId(userId);
   }
 
   @Transactional

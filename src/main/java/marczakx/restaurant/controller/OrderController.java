@@ -49,31 +49,30 @@ public class OrderController {
    *   <li>The Spring Security authentication - used to detect the
    *       {@code order-viewer} role for users who logged in via the
    *       backend OAuth2 flow (e.g. Google).</li>
-   *   <li>The optional {@code viewer}/{@code customer} query
+   *   <li>The optional {@code viewer}/{@code userId} query
    *       parameters sent by the SPA from the Keycloak JWT. The
    *       Keycloak access token is not validated server-side yet (see
    *       {@link marczakx.restaurant.configuration.SecurityConfig}),
    *       so the SPA is trusted to relay these claims. {@code viewer}
    *       is set when the JWT carries the {@code order-viewer} realm
-   *       role; {@code customer} is the Keycloak
-   *       {@code preferred_username} used to scope the result for
-   *       non-viewers.</li>
+   *       role; {@code userId} is the Keycloak {@code sub} claim used
+   *       to scope the result for non-viewers.</li>
    * </ul>
    * When the caller has the viewer privilege (either by a backend
    * OAuth2 role or the SPA's {@code viewer} flag) the full list is
-   * returned. Everyone else gets orders whose {@code customer} field
-   * matches the resolved username, or nothing when no username is
+   * returned. Everyone else gets orders whose {@code userId} field
+   * matches the resolved user id, or nothing when no user id is
    * available.
    */
   @GetMapping
   public List<Order> getAll(
-      @RequestParam(value = "customer", required = false) String customer,
+      @RequestParam(value = "userId", required = false) String userId,
       @RequestParam(value = "viewer", required = false) Boolean viewer) {
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
     boolean canViewAllOrders = hasRole(authentication, ORDER_VIEWER_ROLE)
         || Boolean.TRUE.equals(viewer);
-    String username = resolveUsername(authentication, customer);
-    return orderService.findAll(canViewAllOrders, username);
+    String resolvedUserId = resolveUserId(authentication, userId);
+    return orderService.findAll(canViewAllOrders, resolvedUserId);
   }
 
   @GetMapping("/{orderId}")
@@ -120,17 +119,17 @@ public class OrderController {
   }
 
   /**
-   * Picks the best username available for filtering. Prefers the value
-   * the SPA sent in the {@code customer} query parameter (the Keycloak
-   * {@code preferred_username} claim) because Keycloak tokens are not
-   * validated server-side yet. Falls back to the Spring Security
-   * principal name for backend-OAuth2 logins (e.g. Google). Returns
-   * {@code null} when neither is available - the service treats that as
-   * "scope to nothing" for callers without the viewer role.
+   * Picks the best user id available for filtering. Prefers the value
+   * the SPA sent in the {@code userId} query parameter (the Keycloak
+   * {@code sub} claim) because Keycloak tokens are not validated
+   * server-side yet. Falls back to the Spring Security principal name
+   * for backend-OAuth2 logins (e.g. Google). Returns {@code null} when
+   * neither is available - the service treats that as "scope to
+   * nothing" for callers without the viewer role.
    */
-  private static String resolveUsername(Authentication authentication, String customer) {
-    if (customer != null && !customer.isBlank()) {
-      return customer;
+  private static String resolveUserId(Authentication authentication, String userId) {
+    if (userId != null && !userId.isBlank()) {
+      return userId;
     }
     if (authentication != null && authentication.getName() != null
         && !authentication.getName().isBlank()

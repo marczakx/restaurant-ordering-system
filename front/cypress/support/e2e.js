@@ -41,5 +41,12 @@ Cypress.Commands.add('loginViaKeycloak', (username, password, clientId = 'restau
     if (payload && typeof payload.preferred_username === 'string') {
       window.localStorage.setItem('auth_username', payload.preferred_username);
     }
+
+    // Mirror the stable Keycloak "sub" claim into localStorage so the
+    // order API can scope the list to the logged-in user, matching the
+    // real AuthService.saveToken behaviour.
+    if (payload && typeof payload.sub === 'string') {
+      window.localStorage.setItem('auth_user_id', payload.sub);
+    }
   });
 });

@@ -43,5 +43,11 @@ export interface Order {
   id: number;
   orderItems: OrderItem[];
   customer: string;
+  /**
+   * Stable Keycloak {@code sub} claim of the user that placed the order.
+   * Used to scope the order list to the logged-in user on the backend
+   * (replaces the previous "customer name" filter).
+   */
+  userId?: string | null;
   status: OrderStatus;
 }
