@@ -2,14 +2,18 @@ package marczakx.auth.service;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import marczakx.auth.configuration.KeycloakIntrospectionProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClient;
 
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
@@ -27,9 +31,14 @@ import java.util.Objects;
  * is the only place that talks to Keycloak's introspection endpoint; controllers
  * should depend on {@link #introspect(String)} and not call Keycloak themselves.
  * <p>
- * The HTTP client is created lazily and configured with the connect/read
- * timeouts from {@link KeycloakIntrospectionProperties} so a slow Keycloak
- * cannot block request threads.
+ * The HTTP call is written manually over a raw {@link Socket} so the
+ * {@code Host} header can be set to {@code localhost}. Keycloak 24+ enforces
+ * the audience / issuer check on the bearer token and rejects the request if
+ * the {@code Host} header does not match the hostname that originally issued
+ * the token (the realm was provisioned against {@code http://localhost}).
+ * Neither {@link java.net.http.HttpClient} nor {@code HttpURLConnection}
+ * allow overriding the {@code Host} header (it is a restricted header), so a
+ * raw socket is the only way to send the correct value.
  */
 @Service
 public class KeycloakIntrospectionService {
@@ -37,24 +46,14 @@ public class KeycloakIntrospectionService {
     private static final Logger log = LoggerFactory.getLogger(KeycloakIntrospectionService.class);
 
     private final KeycloakIntrospectionProperties properties;
-    private final RestClient restClient;
     private final String authorizationHeader;
+    private final ObjectMapper objectMapper;
 
     public KeycloakIntrospectionService(KeycloakIntrospectionProperties properties) {
         this.properties = properties;
-        this.restClient = RestClient.builder()
-                .requestFactory(buildRequestFactory(properties))
-                .build();
         this.authorizationHeader = "Basic " + Base64.getEncoder().encodeToString(
                 (properties.getClientId() + ":" + properties.getClientSecret()).getBytes(StandardCharsets.UTF_8));
-    }
-
-    private static org.springframework.http.client.ClientHttpRequestFactory buildRequestFactory(
-            KeycloakIntrospectionProperties properties) {
-        var factory = new org.springframework.http.client.SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(properties.getConnectTimeoutMs());
-        factory.setReadTimeout(properties.getReadTimeoutMs());
-        return factory;
+        this.objectMapper = new ObjectMapper();
     }
 
     /**
@@ -73,28 +72,88 @@ public class KeycloakIntrospectionService {
         String body = "token=" + URLEncoder.encode(token, StandardCharsets.UTF_8)
                 + "&token_type_hint=access_token";
         try {
-            IntrospectionResponse response = restClient.post()
-                    .uri(properties.getUrl())
-                    .header(HttpHeaders.AUTHORIZATION, authorizationHeader)
-                    .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_FORM_URLENCODED_VALUE)
-                    .body(body)
-                    .retrieve()
-                    .body(IntrospectionResponse.class);
-            if (response == null) {
-                log.warn("Keycloak introspection returned an empty body for the supplied token");
-                return IntrospectionResult.inactive();
+            URL url = new URL(properties.getUrl());
+            int port = url.getPort() != -1 ? url.getPort() : url.getDefaultPort();
+            String path = url.getPath() + (url.getQuery() != null ? "?" + url.getQuery() : "");
+
+            try (Socket socket = new Socket()) {
+                socket.connect(new InetSocketAddress(url.getHost(), port), properties.getConnectTimeoutMs());
+                socket.setSoTimeout(properties.getReadTimeoutMs());
+
+                // Build the HTTP/1.1 request manually so the Host header can be
+                // set to "localhost" – the hostname the Keycloak realm was
+                // provisioned against. Restricted headers cannot be overridden
+                // by HttpURLConnection or java.net.http.HttpClient.
+                String request = "POST " + path + " HTTP/1.1\r\n"
+                        + "Host: localhost\r\n"
+                        + "Authorization: " + authorizationHeader + "\r\n"
+                        + "Content-Type: application/x-www-form-urlencoded\r\n"
+                        + "Content-Length: " + body.getBytes(StandardCharsets.UTF_8).length + "\r\n"
+                        + "Connection: close\r\n"
+                        + "\r\n"
+                        + body;
+
+                OutputStream os = socket.getOutputStream();
+                os.write(request.getBytes(StandardCharsets.UTF_8));
+                os.flush();
+
+                String responseText = readResponse(socket.getInputStream());
+                int status = parseStatus(responseText);
+                if (status / 100 != 2) {
+                    log.warn("Keycloak introspection failed with HTTP {}: {}",
+                            status, responseText);
+                    return IntrospectionResult.inactive();
+                }
+
+                String responseBody = extractBody(responseText);
+                if (responseBody.isEmpty()) {
+                    log.warn("Keycloak introspection returned an empty body for the supplied token");
+                    return IntrospectionResult.inactive();
+                }
+                IntrospectionResponse parsed = objectMapper.readValue(responseBody, IntrospectionResponse.class);
+                return parsed.toResult();
             }
-            return response.toResult();
-        } catch (org.springframework.web.client.HttpStatusCodeException ex) {
-            log.warn("Keycloak introspection failed with HTTP {}: {}",
-                    ex.getStatusCode().value(), ex.getStatusText());
-            return IntrospectionResult.inactive();
-        } catch (RuntimeException ex) {
-            // RestClient wraps IO errors – log once and treat as not-active so
-            // the caller returns 401 instead of hanging on a broken Keycloak.
+        } catch (Exception ex) {
             log.warn("Keycloak introspection request failed: {}", ex.getMessage());
             return IntrospectionResult.inactive();
         }
+    }
+
+    /** Reads the full HTTP response from the socket. */
+    private static String readResponse(InputStream is) throws java.io.IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        byte[] buf = new byte[1024];
+        int n;
+        while ((n = is.read(buf)) > 0) {
+            out.write(buf, 0, n);
+        }
+        return out.toString(StandardCharsets.UTF_8);
+    }
+
+    /** Parses the HTTP status code from the status line (e.g. "HTTP/1.1 200 OK"). */
+    private static int parseStatus(String responseText) {
+        int space1 = responseText.indexOf(' ');
+        if (space1 < 0) {
+            return -1;
+        }
+        int space2 = responseText.indexOf(' ', space1 + 1);
+        if (space2 < 0) {
+            return -1;
+        }
+        try {
+            return Integer.parseInt(responseText.substring(space1 + 1, space2));
+        } catch (NumberFormatException ex) {
+            return -1;
+        }
+    }
+
+    /** Extracts the body after the header/body separator. */
+    private static String extractBody(String responseText) {
+        int headerEnd = responseText.indexOf("\r\n\r\n");
+        if (headerEnd < 0) {
+            return "";
+        }
+        return responseText.substring(headerEnd + 4);
     }
 
     /** Result of an introspection call. */
