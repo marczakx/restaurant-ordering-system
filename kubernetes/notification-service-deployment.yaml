@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
       - name: notification-service
-        image: marczakx/notification-service:937a25d3
+        image: marczakx/notification-service:cc476262_1.0.3
         imagePullPolicy: Always
         ports:
         - containerPort: 8083

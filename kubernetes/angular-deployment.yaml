@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
       - name: angular
-        image: marczakx/restaurant-angular:937a25d3
+        image: marczakx/restaurant-angular:cc476262_1.0.3
         imagePullPolicy: Always
         ports:
         - containerPort: 4200

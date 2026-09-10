@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
       - name: nginx
-        image: marczakx/restaurant-nginx:937a25d3
+        image: marczakx/restaurant-nginx:cc476262_1.0.3
         imagePullPolicy: Always
         ports:
         - containerPort: 80

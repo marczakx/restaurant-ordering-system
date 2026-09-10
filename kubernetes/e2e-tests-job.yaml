@@ -37,7 +37,7 @@ spec:
             - until wget -q -O /dev/null http://nginx:80; do echo "waiting for nginx..."; sleep 3; done
       containers:
         - name: cypress
-          image: marczakx/restaurant-e2e:937a25d3
+          image: marczakx/restaurant-e2e:cc476262_1.0.3
           imagePullPolicy: IfNotPresent
           env:
             - name: CYPRESS_BASE_URL
