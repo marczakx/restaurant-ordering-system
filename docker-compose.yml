@@ -65,7 +65,7 @@ services:
   # the commit hash so docker compose and minikube run the exact same
   # backend binary – no "works on my machine" surprises).
   backend:
-    image: marczakx/restaurant-backend:cc476262_1.0.3
+    image: marczakx/restaurant-backend:7dbc718b_1.0.3
     ports:
       - "8081:8080"
     environment:
@@ -93,7 +93,7 @@ services:
   # frontend over WebSocket (STOMP). Uses the same image tag as the
   # Kubernetes deployment.
   notification-service:
-    image: marczakx/notification-service:cc476262_1.0.3
+    image: marczakx/notification-service:7dbc718b_1.0.3
     ports:
       - "8083:8083"
     environment:
@@ -131,7 +131,7 @@ services:
   # Not exposed to the host; all traffic enters through the nginx proxy.
   # Same image the Kubernetes deployment uses.
   angular:
-    image: marczakx/restaurant-angular:cc476262_1.0.3
+    image: marczakx/restaurant-angular:7dbc718b_1.0.3
     depends_on:
       - backend
     networks:
@@ -142,7 +142,7 @@ services:
   # /api, /ws, /oauth2 to the backend and /keycloak to Keycloak. Same
   # image as the Kubernetes deployment.
   nginx:
-    image: marczakx/restaurant-nginx:cc476262_1.0.3
+    image: marczakx/restaurant-nginx:7dbc718b_1.0.3
     ports:
       - "8082:80"
     depends_on:
