@@ -9,7 +9,7 @@
 # Usage:
 #   ./scripts/build-and-push.sh              # build & push all images
 #   ./scripts/build-and-push.sh backend      # only backend
-#   ./scripts/build-and-push.sh frontend     # only frontend (nginx + angular)
+#   ./scripts/build-and-push.sh nginx        # only nginx (nginx + angular)
 #   ./scripts/build-and-push.sh e2e          # only e2e runner
 #
 set -euo pipefail
@@ -38,7 +38,7 @@ build_and_push() {
 }
 
 TARGETS=("${@:-all}")
-[[ " ${TARGETS[*]} " == *" all "* ]] && TARGETS=(backend frontend e2e)
+[[ " ${TARGETS[*]} " == *" all "* ]] && TARGETS=(backend nginx e2e)
 
 for target in "${TARGETS[@]}"; do
   case "$target" in
@@ -50,17 +50,17 @@ for target in "${TARGETS[@]}"; do
       fi
       build_and_push "restaurant-backend" "${ROOT_DIR}/Dockerfile" "${ROOT_DIR}"
       ;;
-    frontend)
+    nginx)
       # Angular SPA tier
       build_and_push "restaurant-angular" "${ROOT_DIR}/front/Dockerfile.angular" "${ROOT_DIR}/front"
-      # Nginx reverse-proxy tier (entry point, keeps the frontend name)
-      build_and_push "restaurant-frontend" "${ROOT_DIR}/front/Dockerfile.nginx" "${ROOT_DIR}/front"
+      # Nginx reverse-proxy tier (entry point)
+      build_and_push "restaurant-nginx" "${ROOT_DIR}/front/Dockerfile.nginx" "${ROOT_DIR}/front"
       ;;
     e2e)
       build_and_push "restaurant-e2e" "${ROOT_DIR}/front/Dockerfile.e2e" "${ROOT_DIR}/front"
       ;;
     *)
-      echo "Unknown target: $target (expected: backend, frontend, e2e)" >&2
+      echo "Unknown target: $target (expected: backend, nginx, e2e)" >&2
       exit 1
       ;;
   esac

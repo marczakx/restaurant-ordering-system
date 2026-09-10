@@ -2,7 +2,7 @@ const { defineConfig } = require("cypress");
 
 // Base URL can be overridden with the CYPRESS_BASE_URL environment variable,
 // e.g. when running against an application deployed on Kubernetes:
-//   CYPRESS_BASE_URL=http://frontend:80 npx cypress run --browser chrome
+//   CYPRESS_BASE_URL=http://nginx:80 npx cypress run --browser chrome
 const baseUrl = process.env.CYPRESS_BASE_URL || "http://localhost:8082";
 
 module.exports = defineConfig({

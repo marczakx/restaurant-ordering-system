@@ -1,7 +1,7 @@
 # E2E tests (Cypress) run as a Job inside the cluster.
 #
-# The tests execute against the in-cluster frontend service
-# (http://frontend:80), so no ingress or LoadBalancer access is required.
+# The tests execute against the in-cluster nginx service
+# (http://nginx:80), so no ingress or LoadBalancer access is required.
 #
 # Build and push the runner image first (see scripts/build-and-push.sh):
 #   ./scripts/build-and-push.sh e2e
@@ -28,20 +28,20 @@ spec:
     spec:
       restartPolicy: Never
       initContainers:
-        # Wait until the frontend (and everything behind it) responds before starting Cypress
-        - name: wait-for-frontend
+        # Wait until the nginx (and everything behind it) responds before starting Cypress
+        - name: wait-for-nginx
           image: busybox:1.36
           command:
             - sh
             - -c
-            - until wget -q -O /dev/null http://frontend:80; do echo "waiting for frontend..."; sleep 3; done
+            - until wget -q -O /dev/null http://nginx:80; do echo "waiting for nginx..."; sleep 3; done
       containers:
         - name: cypress
           image: marczakx/restaurant-e2e:937a25d3
           imagePullPolicy: IfNotPresent
           env:
             - name: CYPRESS_BASE_URL
-              value: http://frontend:80
+              value: http://nginx:80
           resources:
             # Low CPU request so the Job fits on a small single-node cluster;
             # the limit still allows bursting when the node has spare capacity.

@@ -9,14 +9,14 @@
 # Optional environment variables:
 #   K8S_NAMESPACE     target namespace            (default: restaurant)
 #   E2E_IMAGE         runner image name:tag       (default: marczakx/restaurant-e2e:<VERSION>)
-#   CYPRESS_BASE_URL  URL under test              (default: http://frontend:80)
+#   CYPRESS_BASE_URL  URL under test              (default: http://nginx:80)
 #
 set -euo pipefail
 
 NAMESPACE="${K8S_NAMESPACE:-restaurant}"
 VERSION="$(tr -d '[:space:]' < "$(dirname "${BASH_SOURCE[0]}")/../VERSION")"
 IMAGE="${E2E_IMAGE:-marczakx/restaurant-e2e:${VERSION}}"
-BASE_URL="${CYPRESS_BASE_URL:-http://frontend:80}"
+BASE_URL="${CYPRESS_BASE_URL:-http://nginx:80}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"

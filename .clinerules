@@ -67,12 +67,12 @@ If you want clime to automatically use this template, create a file named `commi
 
 ### Running the Application
 - Use Docker Compose to start the application stack.
-- Start the backend and frontend services:
+- Start the backend and nginx services:
   ```bash
-  docker compose up backend frontend
+  docker compose up backend nginx
   ```
 - `backend` – starts the Spring Boot service (port 8081).
-- `frontend` – starts the Angular UI (port 8082).
+- `nginx` – starts the Nginx edge/proxy tier (port 8082).
 - The `db` service (PostgreSQL) is started automatically as a dependency of `backend`.
 
 ### Building with Maven inside Docker
@@ -105,8 +105,8 @@ If you want clime to automatically use this template, create a file named `commi
 ### Docker Compose Services Overview
 - `db` – PostgreSQL 16, port 5433:5432, credentials: restaurant/restaurant.
 - `backend` – Spring Boot, port 8081:8080, depends on `db`.
-- `frontend` – Angular UI, port 8082:80, depends on `backend`.
-- `e2e-tests` – Cypress browser tests, depends on `frontend`.
+- `nginx` – Nginx edge/proxy tier, port 8082:80, depends on `backend`.
+- `e2e-tests` – Cypress browser tests, depends on `nginx`.
 - `integration-tests` – Maven test runner, depends on `backend`.
 
 ### Environment Variables

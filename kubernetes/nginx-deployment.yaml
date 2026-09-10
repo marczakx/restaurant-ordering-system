@@ -1,27 +1,25 @@
-# Nginx reverse-proxy tier (the frontend entry point).
+# Nginx reverse-proxy tier (the entry point).
 #
 # Pure proxy: forwards / to the Angular SPA service and proxies
 # /api, /ws, /oauth2 to the backend and /keycloak to Keycloak.
-# Keeps the "frontend" name/port contract used by the ingress,
-# E2E job and LoadBalancer.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: restaurant-frontend
+  name: restaurant-nginx
   namespace: restaurant
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: restaurant-frontend
+      app: restaurant-nginx
   template:
     metadata:
       labels:
-        app: restaurant-frontend
+        app: restaurant-nginx
     spec:
       containers:
-      - name: frontend
-        image: marczakx/restaurant-frontend:937a25d3
+      - name: nginx
+        image: marczakx/restaurant-nginx:937a25d3
         imagePullPolicy: Always
         ports:
         - containerPort: 80

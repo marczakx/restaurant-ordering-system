@@ -2,7 +2,7 @@
 #
 # Serves the static Angular bundle on port 4200 using `serve -s`.
 # Not exposed outside the cluster – all traffic enters through the
-# Nginx reverse proxy (frontend service), which forwards / here.
+# Nginx reverse proxy (nginx service), which forwards / here.
 apiVersion: apps/v1
 kind: Deployment
 metadata:

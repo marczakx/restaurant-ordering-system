@@ -67,7 +67,7 @@ docker compose up --build -d
 
 Useful variants:
 ```sh
-docker compose up backend frontend      # backend + frontend (+ db, keycloak deps)
+docker compose up backend nginx         # backend + nginx (+ db, keycloak deps)
 docker compose up -d                    # detached, all services
 docker compose logs -f backend          # follow backend logs
 ```
@@ -95,7 +95,7 @@ Kubernetes manifests reference the pinned version tag.
 Images built from this repository:
 - `marczakx/restaurant-backend` (root `Dockerfile`)
 - `marczakx/restaurant-angular` (`front/Dockerfile.angular`, Angular SPA served on port 4200)
-- `marczakx/restaurant-frontend` (`front/Dockerfile.nginx`, Nginx reverse proxy – the entry point)
+- `marczakx/restaurant-nginx` (`front/Dockerfile.nginx`, Nginx reverse proxy – the entry point)
 - `marczakx/restaurant-e2e` (`front/Dockerfile.e2e`, Cypress runner)
 
 The frontend is split into two tiers: the **Angular** image builds the SPA and
@@ -105,7 +105,7 @@ reverse proxy that forwards `/` to Angular and proxies `/api`, `/ws`,
 
 Build and push (all images or a single target):
 ```sh
-./scripts/build-and-push.sh              # backend + frontend + e2e
+./scripts/build-and-push.sh              # backend + nginx + e2e
 ./scripts/build-and-push.sh e2e          # only the E2E runner
 ```
 
@@ -120,8 +120,8 @@ environment variable (default: `http://localhost:8082`).
 
 #### Option A – In-cluster Job (recommended)
 
-Tests run as a Kubernetes Job inside the cluster and target the frontend service
-directly (`http://frontend:80`), so no ingress or LoadBalancer access is needed:
+Tests run as a Kubernetes Job inside the cluster and target the nginx service
+directly (`http://nginx:80`), so no ingress or LoadBalancer access is needed:
 
 ```sh
 ./scripts/run-e2e-k8s.sh
@@ -135,7 +135,7 @@ Useful overrides:
 ```sh
 K8S_NAMESPACE=restaurant \
 E2E_IMAGE=marczakx/restaurant-e2e:latest \
-CYPRESS_BASE_URL=http://frontend:80 \
+CYPRESS_BASE_URL=http://nginx:80 \
 ./scripts/run-e2e-k8s.sh
 ```
 
@@ -150,9 +150,9 @@ kubectl logs job/e2e-tests -n restaurant
 
 #### Option B – From the workstation
 
-Forward the frontend service to localhost and run Cypress locally:
+Forward the nginx service to localhost and run Cypress locally:
 ```sh
-kubectl port-forward svc/frontend 8082:80 -n restaurant
+kubectl port-forward svc/nginx 8082:80 -n restaurant
 cd front && npm run cypress:run
 ```
 

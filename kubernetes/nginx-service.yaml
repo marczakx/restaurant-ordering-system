@@ -1,11 +1,11 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: frontend
+  name: nginx
   namespace: restaurant
 spec:
   selector:
-    app: restaurant-frontend
+    app: restaurant-nginx
   ports:
     - protocol: TCP
       port: 80
