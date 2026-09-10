@@ -71,8 +71,11 @@ describe('OrdersComponent', () => {
       'hasRole', 'getUsername', 'isLoggedIn', 'getRoles', 'getUserId'
     ]);
     // The default user is NOT a viewer, matching the existing assertions
-    // that only the customer's own orders are fetched.
+    // that only the customer's own orders are fetched. getUserId returns
+    // the stable Keycloak "sub" claim which is what the backend stores
+    // on orders as their userId.
     authServiceSpy.hasRole.and.returnValue(false);
+    authServiceSpy.getUserId.and.returnValue('keycloak-sub-123');
     authServiceSpy.getUsername.and.returnValue('John Doe');
 
     await TestBed.configureTestingModule({
@@ -98,6 +101,19 @@ describe('OrdersComponent', () => {
   it('should load orders on init', () => {
     expect(orderServiceSpy.getAllOrders).toHaveBeenCalled();
     expect(component.orders).toEqual(mockOrders);
+  });
+
+  it('should load orders using the Keycloak user id, not the username', () => {
+    // Regression: orders are persisted with the Keycloak "sub" claim as
+    // their userId. Filtering the list by the preferred_username would
+    // never match and the list would render empty.
+    expect(orderServiceSpy.getAllOrders).toHaveBeenCalledWith('keycloak-sub-123', false);
+  });
+
+  it('should not send a user id filter for viewers', () => {
+    authServiceSpy.hasRole.and.returnValue(true);
+    component.loadOrders();
+    expect(orderServiceSpy.getAllOrders).toHaveBeenCalledWith(null, true);
   });
 
   it('should connect to websocket on init', () => {

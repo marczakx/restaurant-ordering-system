@@ -70,14 +70,17 @@ export class OrdersComponent implements OnInit, OnDestroy {
    * {@code order-viewer} role (e.g. managers) see every order; everyone
    * else only sees the orders placed by themselves. The Keycloak JWT
    * is not validated server-side yet, so the SPA forwards both the
-   * role claim ({@code viewer=true}) and the username
-   * ({@code customer=<name>}) to the backend, which uses them to scope
-   * the response.
+   * role claim ({@code viewer=true}) and the stable Keycloak user id
+   * ({@code userId=<sub>}) to the backend, which uses them to scope
+   * the response. The {@code sub} claim must be used here (not the
+   * username) because orders are persisted with the {@code sub} as
+   * their {@code userId} - filtering by username would never match
+   * and the list would come back empty.
    */
   loadOrders() {
     const isViewer = this.canViewAllOrders();
-    const customer = isViewer ? null : this.authService.getUsername();
-    this.orderService.getAllOrders(customer, isViewer).subscribe(orders => {
+    const userId = isViewer ? null : this.authService.getUserId();
+    this.orderService.getAllOrders(userId, isViewer).subscribe(orders => {
       this.orders = orders;
     });
   }
