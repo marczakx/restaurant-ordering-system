@@ -2,9 +2,10 @@
 #
 # Build and push all application images to Docker Hub with version tags.
 #
-# Every image is tagged three times: the version from the VERSION file,
-# the short git commit hash of the current HEAD, and `latest`.
-# Kubernetes manifests reference the pinned version tag.
+# Every image is tagged with the "<short-commit>_<version>" scheme
+# (e.g. 53593053_1.0.7) combining the short git commit hash of the
+# current HEAD with the version from the VERSION file, plus `latest`.
+# Kubernetes manifests reference the pinned <commit>_<version> tag.
 #
 # Usage:
 #   ./scripts/build-and-push.sh              # build & push all images
@@ -20,20 +21,21 @@ VERSION="$(tr -d '[:space:]' < "$(dirname "${BASH_SOURCE[0]}")/../VERSION")"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 
-# Short git commit hash used as an additional image tag so every push
-# can be traced back to the exact source revision.
+# Short git commit hash combined with the VERSION file contents to form
+# the image tag ("<commit>_<version>") so every push can be traced back
+# to the exact source revision and release.
 COMMIT="$(git -C "${ROOT_DIR}" rev-parse --short HEAD)"
+FULL_TAG="${COMMIT}_${VERSION}"
 
 build_and_push() {
   local name="$1" dockerfile="$2" context="$3"
   local image="${DOCKER_USER}/${name}"
 
-  echo "==> Building ${image}:${VERSION} (commit ${COMMIT})"
-  docker build -t "${image}:${VERSION}" -t "${image}:${COMMIT}" -t "${image}:latest" -f "${dockerfile}" "${context}"
+  echo "==> Building ${image}:${FULL_TAG} (commit ${COMMIT}, version ${VERSION})"
+  docker build -t "${image}:${FULL_TAG}" -t "${image}:latest" -f "${dockerfile}" "${context}"
 
-  echo "==> Pushing ${image}:${VERSION}, ${image}:${COMMIT} and ${image}:latest"
-  docker push "${image}:${VERSION}"
-  docker push "${image}:${COMMIT}"
+  echo "==> Pushing ${image}:${FULL_TAG} and ${image}:latest"
+  docker push "${image}:${FULL_TAG}"
   docker push "${image}:latest"
 }
 
@@ -66,4 +68,4 @@ for target in "${TARGETS[@]}"; do
   esac
 done
 
-echo "==> Done. Version: ${VERSION}, commit: ${COMMIT}"
+echo "==> Done. Tag: ${FULL_TAG} (commit ${COMMIT}, version ${VERSION})"
