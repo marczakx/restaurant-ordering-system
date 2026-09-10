@@ -47,4 +47,16 @@ export class OrderService {
   removeItem(orderId: number, itemId: number): Observable<Order> {
     return this.http.delete<Order>(`${this.apiUrl}/${orderId}/items/${itemId}`);
   }
+
+  /**
+   * Pays the given order with BLIK using the 6-digit code from the
+   * customer's banking app. The backend runs a simulated payment
+   * provider: every well-formed code is accepted except "000000".
+   * Returns the order with the resulting payment status.
+   */
+  payWithBlik(orderId: number, blikCode: string): Observable<Order> {
+    return this.http.put<Order>(`${this.apiUrl}/${orderId}/payment/blik`, {
+      blikCode: blikCode
+    });
+  }
 }

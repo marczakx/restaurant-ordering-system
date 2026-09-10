@@ -15,8 +15,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import lombok.RequiredArgsConstructor;
+import marczakx.restaurant.model.dto.BlikPaymentRequest;
 import marczakx.restaurant.service.OrderEventPublisher;
 import marczakx.restaurant.service.OrderService;
+import marczakx.restaurant.service.PaymentService;
 import marczakx.restaurant.model.entity.order.Order;
 import marczakx.restaurant.model.entity.order.OrderStatus;
 
@@ -34,6 +36,7 @@ public class OrderController {
 
   private final OrderService orderService;
   private final OrderEventPublisher orderEventPublisher;
+  private final PaymentService paymentService;
 
   @PutMapping
   public Order save(@RequestBody Order order) {
@@ -99,6 +102,26 @@ public class OrderController {
     Order updatedOrder = orderService.removeItemFromOrder(orderId, itemId);
     orderEventPublisher.publishOrder(updatedOrder);
     return updatedOrder;
+  }
+
+  /**
+   * Pays the given order with BLIK. The 6-digit BLIK code is validated
+   * and processed by a simulated payment provider (see
+   * {@link PaymentService}); only the resulting payment status is
+   * persisted. The updated order is published to Kafka so every
+   * connected client sees the payment state change in real time.
+   *
+   * @throws IllegalArgumentException when the BLIK code is malformed
+   *                                  (HTTP 400, handled by the default
+   *                                  exception handling)
+   * @throws IllegalStateException    when the order is already paid
+   *                                  (HTTP 500, same handling)
+   */
+  @PutMapping("/{orderId}/payment/blik")
+  public Order payWithBlik(@PathVariable Long orderId, @RequestBody BlikPaymentRequest request) {
+    Order paidOrder = paymentService.payWithBlik(orderId, request.blikCode());
+    orderEventPublisher.publishOrder(paidOrder);
+    return paidOrder;
   }
 
   /**

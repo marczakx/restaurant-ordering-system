@@ -47,4 +47,18 @@ public class Order {
   @Builder.Default
   OrderStatus status = OrderStatus.TO_DO;
 
+  /**
+   * Payment method chosen for this order (e.g. BLIK). {@code null}
+   * when no payment method has been selected yet.
+   */
+  @Enumerated(EnumType.STRING)
+  private PaymentMethod paymentMethod;
+
+  /**
+   * Lifecycle state of the payment attempt. {@code null} when no
+   * payment has been attempted yet.
+   */
+  @Enumerated(EnumType.STRING)
+  private PaymentStatus paymentStatus;
+
 }

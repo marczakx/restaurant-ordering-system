@@ -45,7 +45,8 @@ describe('OrdersComponent', () => {
       'getAllOrders',
       'updateItemQuantity',
       'updateStatus',
-      'removeItem'
+      'removeItem',
+      'payWithBlik'
     ]);
     orderServiceSpy.getAllOrders.and.returnValue(of(mockOrders));
     // Ignore the new (customer, isViewer) parameters when the spec
@@ -246,5 +247,64 @@ describe('OrdersComponent', () => {
     expect(component.boardColumns[0].status).toBe('TO_DO');
     expect(component.boardColumns[1].status).toBe('IN_PROGRESS');
     expect(component.boardColumns[2].status).toBe('DONE');
+  });
+
+  it('should return payment label for an order without payment', () => {
+    expect(component.getPaymentLabel(mockOrder)).toBe('Nieopłacone');
+  });
+
+  it('should return payment label for a confirmed BLIK payment', () => {
+    const paidOrder: Order = { ...mockOrder, paymentStatus: 'CONFIRMED' };
+    expect(component.getPaymentLabel(paidOrder)).toBe('Opłacone BLIK');
+  });
+
+  it('should return payment label for a failed payment', () => {
+    const failedOrder: Order = { ...mockOrder, paymentStatus: 'FAILED' };
+    expect(component.getPaymentLabel(failedOrder)).toBe('Płatność nieudana');
+  });
+
+  it('should return payment class matching the payment state', () => {
+    expect(component.getPaymentClass(mockOrder)).toBe('payment-none');
+    expect(component.getPaymentClass({ ...mockOrder, paymentStatus: 'CONFIRMED' })).toBe('payment-confirmed');
+    expect(component.getPaymentClass({ ...mockOrder, paymentStatus: 'PENDING' })).toBe('payment-pending');
+    expect(component.getPaymentClass({ ...mockOrder, paymentStatus: 'FAILED' })).toBe('payment-failed');
+  });
+
+  it('should offer BLIK payment for an unpaid order', () => {
+    expect(component.canPayWithBlik(mockOrder)).toBeTrue();
+  });
+
+  it('should not offer BLIK payment for an already paid order', () => {
+    const paidOrder: Order = { ...mockOrder, paymentStatus: 'CONFIRMED' };
+    expect(component.canPayWithBlik(paidOrder)).toBeFalse();
+  });
+
+  it('should pay with BLIK and update the order in the list', () => {
+    const paidOrder: Order = { ...mockOrder, paymentStatus: 'CONFIRMED' };
+    orderServiceSpy.payWithBlik.and.returnValue(of(paidOrder));
+    spyOn(window, 'prompt').and.returnValue('123456');
+    spyOn(window, 'alert');
+
+    component.payWithBlik(mockOrder);
+
+    expect(orderServiceSpy.payWithBlik).toHaveBeenCalledWith(1, '123456');
+    expect(component.orders[0].paymentStatus).toBe('CONFIRMED');
+  });
+
+  it('should reject a malformed BLIK code without calling the service', () => {
+    spyOn(window, 'prompt').and.returnValue('12ab');
+    spyOn(window, 'alert');
+
+    component.payWithBlik(mockOrder);
+
+    expect(orderServiceSpy.payWithBlik).not.toHaveBeenCalled();
+  });
+
+  it('should do nothing when the BLIK prompt is cancelled', () => {
+    spyOn(window, 'prompt').and.returnValue(null);
+
+    component.payWithBlik(mockOrder);
+
+    expect(orderServiceSpy.payWithBlik).not.toHaveBeenCalled();
   });
 });

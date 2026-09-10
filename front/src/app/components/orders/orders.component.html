@@ -81,6 +81,15 @@
         <div class="order-total">
           <strong>Total: {{ getOrderTotal(order) | currency }}</strong>
         </div>
+        <div class="payment-section">
+          <span class="payment-badge" [ngClass]="getPaymentClass(order)">
+            {{ getPaymentLabel(order) }}
+          </span>
+          <button class="blik-pay-btn" *ngIf="canPayWithBlik(order)" (click)="payWithBlik(order)"
+                  title="Zapłać BLIK-iem">
+            Zapłać BLIK-iem
+          </button>
+        </div>
       </div>
     </ng-container>
 

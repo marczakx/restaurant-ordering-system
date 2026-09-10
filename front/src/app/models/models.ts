@@ -39,6 +39,12 @@ export interface OrderItem {
 
 export type OrderStatus = 'TO_DO' | 'IN_PROGRESS' | 'DONE';
 
+/** Supported payment methods. Mirrors the backend PaymentMethod enum. */
+export type PaymentMethod = 'BLIK';
+
+/** Payment lifecycle. Mirrors the backend PaymentStatus enum. */
+export type PaymentStatus = 'PENDING' | 'CONFIRMED' | 'FAILED';
+
 export interface Order {
   id: number;
   orderItems: OrderItem[];
@@ -50,4 +56,8 @@ export interface Order {
    */
   userId?: string | null;
   status: OrderStatus;
+  /** Payment method chosen for the order; null when not selected yet. */
+  paymentMethod?: PaymentMethod | null;
+  /** Payment state; null when no payment has been attempted yet. */
+  paymentStatus?: PaymentStatus | null;
 }

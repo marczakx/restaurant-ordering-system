@@ -156,6 +156,70 @@ export class OrdersComponent implements OnInit, OnDestroy {
     return order.orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   }
 
+  /**
+   * Human-readable payment state label used on the payment badge.
+   */
+  getPaymentLabel(order: Order): string {
+    switch (order.paymentStatus) {
+      case 'CONFIRMED': return 'Opłacone BLIK';
+      case 'PENDING': return 'Płatność w toku';
+      case 'FAILED': return 'Płatność nieudana';
+      default: return 'Nieopłacone';
+    }
+  }
+
+  /**
+   * CSS class for the payment badge reflecting the payment state.
+   */
+  getPaymentClass(order: Order): string {
+    switch (order.paymentStatus) {
+      case 'CONFIRMED': return 'payment-confirmed';
+      case 'PENDING': return 'payment-pending';
+      case 'FAILED': return 'payment-failed';
+      default: return 'payment-none';
+    }
+  }
+
+  /**
+   * Whether the BLIK payment form should be offered for this order:
+   * no confirmed payment yet (never attempted, pending or failed).
+   */
+  canPayWithBlik(order: Order): boolean {
+    return order.paymentStatus !== 'CONFIRMED';
+  }
+
+  /**
+   * Opens the BLIK code prompt and sends the payment request to the
+   * backend. On success the order in the list is replaced with the
+   * server response (payment confirmed); on failure the user is
+   * notified and the order is refreshed from the server.
+   */
+  payWithBlik(order: Order) {
+    const blikCode = prompt('Podaj 6-cyfrowy kod BLIK:');
+    if (blikCode === null) {
+      return;
+    }
+    const code = blikCode.trim();
+    if (!/^\d{6}$/.test(code)) {
+      alert('Kod BLIK musi mieć dokładnie 6 cyfr.');
+      return;
+    }
+    this.orderService.payWithBlik(order.id, code).subscribe({
+      next: (paidOrder) => {
+        const index = this.orders.indexOf(order);
+        if (index !== -1) {
+          this.orders[index] = paidOrder;
+        }
+        alert('Płatność BLIK zaakceptowana!');
+      },
+      error: (err) => {
+        console.error('BLIK payment failed:', err);
+        alert('Płatność BLIK odrzucona.');
+        this.loadOrders();
+      }
+    });
+  }
+
   getStatusLabel(status: OrderStatus): string {
     switch(status) {
       case 'TO_DO': return 'Do realizacji';

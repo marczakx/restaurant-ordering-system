@@ -56,7 +56,8 @@ describe('MenuComponent', () => {
       'getAllOrders',
       'updateItemQuantity',
       'updateStatus',
-      'removeItem'
+      'removeItem',
+      'payWithBlik'
     ]);
     authServiceSpy = jasmine.createSpyObj('AuthService', ['hasRole', 'getRoles', 'getUsername', 'isLoggedIn', 'getUserId']);
     // By default the user has both menu roles so the existing tests cover
@@ -198,6 +199,33 @@ describe('MenuComponent', () => {
     component.customerName = 'John';
     component.submitOrder();
     expect(orderServiceSpy.saveOrder).not.toHaveBeenCalled();
+  });
+
+  it('should trigger BLIK payment when BLIK is selected at submit', () => {
+    const savedOrder: Order = { id: 5, orderItems: [], customer: 'John', status: 'TO_DO' };
+    orderServiceSpy.saveOrder.and.returnValue(of(savedOrder));
+    orderServiceSpy.payWithBlik.and.returnValue(of({ ...savedOrder, paymentStatus: 'CONFIRMED' }));
+    spyOn(window, 'prompt').and.returnValue('123456');
+    spyOn(window, 'alert');
+
+    component.customerName = 'John';
+    component.selectedPaymentMethod = 'BLIK';
+    component.addToOrder(mockMenuItem);
+    component.submitOrder();
+
+    expect(orderServiceSpy.payWithBlik).toHaveBeenCalledWith(5, '123456');
+    // The payment selection is reset after the order is placed
+    expect(component.selectedPaymentMethod).toBeNull();
+  });
+
+  it('should not trigger BLIK payment when pay-on-site is selected', () => {
+    spyOn(window, 'prompt');
+    component.customerName = 'John';
+    component.addToOrder(mockMenuItem);
+    component.submitOrder();
+    expect(orderServiceSpy.saveOrder).toHaveBeenCalled();
+    expect(orderServiceSpy.payWithBlik).not.toHaveBeenCalled();
+    expect(window.prompt).not.toHaveBeenCalled();
   });
 
   it('should reload menu items on type change', () => {

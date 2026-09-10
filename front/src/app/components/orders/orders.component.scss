@@ -431,3 +431,51 @@ h1 {
   padding: 2rem;
   color: #666;
 }
+
+/* BLIK payment section */
+.payment-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed #e0e0e0;
+}
+.payment-badge {
+  display: inline-block;
+  padding: 0.25rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: bold;
+}
+.payment-badge.payment-confirmed {
+  background: #4caf50;
+  color: white;
+}
+.payment-badge.payment-pending {
+  background: #ff9800;
+  color: white;
+}
+.payment-badge.payment-failed {
+  background: #f44336;
+  color: white;
+}
+.payment-badge.payment-none {
+  background: #eee;
+  color: #666;
+}
+.blik-pay-btn {
+  padding: 0.35rem 0.75rem;
+  border: 1px solid #000;
+  background: #000;
+  color: #fff;
+  font-weight: bold;
+  font-size: 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.blik-pay-btn:hover {
+  background: #333;
+}

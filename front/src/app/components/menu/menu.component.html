@@ -127,6 +127,19 @@
     <div class="total">
       <strong>Total: {{ getTotal() | currency }}</strong>
     </div>
+    <div class="payment-methods">
+      <strong>Payment:</strong>
+      <label class="payment-option">
+        <input type="radio" name="paymentMethod" [checked]="selectedPaymentMethod === null"
+               (change)="selectedPaymentMethod = null" />
+        Pay on site
+      </label>
+      <label class="payment-option">
+        <input type="radio" name="paymentMethod" [checked]="selectedPaymentMethod === 'BLIK'"
+               (change)="selectedPaymentMethod = 'BLIK'" />
+        BLIK
+      </label>
+    </div>
     <div class="customer-form">
       <input [(ngModel)]="customerName" placeholder="Your name" />
       <button (click)="submitOrder()">Place Order</button>

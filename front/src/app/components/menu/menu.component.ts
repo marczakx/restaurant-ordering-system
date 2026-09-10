@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { MenuService } from '../../services/menu.service';
 import { OrderService } from '../../services/order.service';
 import { AuthService } from '../../services/auth.service';
-import { CuisineDto, MenuItemDto, MenuItemTypeDto, Order, OrderItem, OrderStatus } from '../../models/models';
+import { CuisineDto, MenuItemDto, MenuItemTypeDto, Order, OrderItem, OrderStatus, PaymentMethod } from '../../models/models';
 
 @Component({
   selector: 'app-menu',
@@ -24,6 +24,8 @@ export class MenuComponent implements OnInit {
   selectedCuisine: number | null = null;
   customerName: string = '';
   orderStatus: OrderStatus = 'TO_DO';
+  /** Payment method selected in the order summary; null = pay later. */
+  selectedPaymentMethod: PaymentMethod | null = null;
 
   editingItem: MenuItemDto | null = null;
   editName: string = '';
@@ -231,12 +233,30 @@ export class MenuComponent implements OnInit {
       // can scope the user's own orders list. The customer name stays
       // the human-readable display label.
       userId: this.authService.getUserId(),
-      status: this.orderStatus
+      status: this.orderStatus,
+      // When BLIK is selected the payment itself is triggered right
+      // after the order is saved (a 6-digit code is required); the
+      // method is still recorded on the order so staff can see how
+      // the customer intends to pay.
+      paymentMethod: this.selectedPaymentMethod,
+      paymentStatus: null
     };
 
-    this.orderService.saveOrder(order).subscribe(() => {
+    this.orderService.saveOrder(order).subscribe(savedOrder => {
+      if (this.selectedPaymentMethod === 'BLIK') {
+        const blikCode = prompt('Podaj 6-cyfrowy kod BLIK:');
+        if (blikCode !== null && blikCode.trim() !== '') {
+          this.orderService.payWithBlik(savedOrder.id, blikCode.trim()).subscribe({
+            next: (paid) => alert('Płatność BLIK zaakceptowana!'),
+            error: () => alert('Płatność BLIK odrzucona. Możesz spróbować ponownie w widoku zamówień.')
+          });
+        } else {
+          alert('Pominięto płatność BLIK. Możesz zapłacić później w widoku zamówień.');
+        }
+      }
       this.orderItems = [];
       this.customerName = '';
+      this.selectedPaymentMethod = null;
       alert('Order placed successfully!');
     });
   }
